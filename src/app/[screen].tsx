@@ -2,7 +2,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import type { Metadata } from 'expo-router/server';
 import * as Linking from 'expo-linking';
 import { useState } from 'react';
-import { Alert, Image, ImageBackground, Modal, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { Alert, Image, ImageBackground, Modal, Platform, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { C, S, Button, Card, Divider, Icon, Stat, Tag } from '../ui';
 import { communityExperts, discussions, initialTasks, marketPrices, navItems, screenMeta, weather } from '../data';
 import { useFarmProfile } from '../farm-profile';
@@ -54,7 +54,9 @@ export default function ScreenRoute() {
       {showAppShell && desktop ? <View style={styles.sidebar}>
         <Pressable onPress={() => go('dashboard')} style={styles.brand}><View style={styles.brandMark}><Icon name="sprout" color={C.white} size={23} /></View><View><Text style={styles.brandName}>Kisaan Mitra</Text><Text style={styles.brandSub}>AI FARMING COMPANION</Text></View></Pressable>
         <Text style={styles.sideLabel}>YOUR FARM</Text>
-        {menu.map(([id, label, icon]) => <SideLink key={id} id={id} label={label} icon={icon} active={screen === id} onPress={go} />)}
+        <ScrollView style={styles.sidebarMenu} contentContainerStyle={styles.sidebarMenuContent} showsVerticalScrollIndicator>
+          {menu.map(([id, label, icon]) => <SideLink key={id} id={id} label={label} icon={icon} active={screen === id} onPress={go} />)}
+        </ScrollView>
         <View style={styles.sidebarBottom}><Text style={{ color: '#c5d8c8', fontSize: 12 }}>🌱  Growing together</Text><Text style={{ color: '#a8c4ac', fontSize: 11, marginTop: 5 }}>{profile.village} · {profile.state}</Text></View>
       </View> : null}
       <View style={styles.main}>
@@ -63,7 +65,7 @@ export default function ScreenRoute() {
           {!desktop ? <Text style={styles.brandMobile}>Kisaan Mitra <Text style={{ color: C.green }}>AI</Text></Text> : null}
           <View style={{ flex: 1 }} />
           <Pressable onPress={() => go('notifications')} style={styles.bell}><Icon name="bell-outline" size={20} color={C.ink} /><View style={styles.bellDot} /></Pressable>
-          {desktop ? <Pressable onPress={() => go('profile')} style={styles.avatar}><Text style={{ color: C.greenDark, fontWeight: '800' }}>RK</Text></Pressable> : null}
+          {desktop ? <Pressable onPress={() => go('profile')} style={styles.avatar} accessibilityLabel={`Open ${profile.name || 'your'} profile`}><Text style={{ color: C.greenDark, fontWeight: '800' }}>{getInitials(profile.name)}</Text></Pressable> : null}
         </View> : null}
 
         <ScrollView contentContainerStyle={[S.content, desktop && styles.desktopContent, !showAppShell && styles.onboardContent]} showsVerticalScrollIndicator={false}>
@@ -282,6 +284,11 @@ function formatFarmArea(area: string) {
   return /\b(ac|acre|acres|hectare|hectares|ha)\b/i.test(value) ? value : `${value} acres`;
 }
 
+function getInitials(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  return parts.length ? parts.slice(0, 2).map(part => part[0]).join('').toUpperCase() : '?';
+}
+
 function MapScreen({ mode, setMode, go }: { mode: string; setMode: (s: string) => void; go: (s: string) => void }) {
   const { profile, setProfile } = useFarmProfile();
   const [pinPickerOpen, setPinPickerOpen] = useState(false);
@@ -298,10 +305,10 @@ function MapScreen({ mode, setMode, go }: { mode: string; setMode: (s: string) =
     <View style={{ flexDirection: 'row', gap: 9, marginTop: 12, flexWrap: 'wrap' }}><Button title="Update farm pin" secondary icon="map-marker-outline" onPress={() => setPinPickerOpen(true)} /><Button title="Analyze crop vigor" icon="satellite-variant" onPress={() => void analysis.refresh()} /></View>
     {analysis.loading ? <Text style={[S.muted, { marginTop: 12 }]}>Looking for usable Sentinel-2 imagery over the estimated field…</Text> : null}
     {analysis.error ? <View style={styles.satelliteNotice}><Icon name="information-outline" size={18} color={C.gold} /><Text style={[S.muted, { flex: 1 }]}>{analysis.error}</Text></View> : null}
-    {analysis.data?.latest ? <View style={styles.satelliteScore}><View style={styles.yieldIcon}><Icon name="leaf" size={21} color={C.green} /></View><View style={{ flex: 1 }}><Text style={styles.cardEyebrow}>SATELLITE NDVI VIGOR INDEX</Text><Text style={[styles.itemTitle, { fontSize: 19, marginTop: 3 }]}>{analysis.data.latest.vigorScore} / 100</Text><Text style={S.muted}>NDVI {analysis.data.latest.ndvi.toFixed(2)} · observed {new Date(analysis.data.latest.date).toLocaleDateString()}</Text></View><Tag>{analysis.data.latest.changeFromPrevious === null ? 'FIRST PASS' : analysis.data.latest.changeFromPrevious >= 0 ? 'TREND UP' : 'TREND DOWN'}</Tag></View> : null}
+    {analysis.data?.latest ? <><View style={styles.satelliteScore}><View style={styles.yieldIcon}><Icon name="leaf" size={21} color={C.green} /></View><View style={{ flex: 1 }}><Text style={styles.cardEyebrow}>HOW GREEN YOUR FIELD LOOKS FROM SPACE</Text><Text style={[styles.itemTitle, { fontSize: 19, marginTop: 3 }]}>{analysis.data.latest.vigorScore} / 100</Text><Text style={S.muted}>NDVI {analysis.data.latest.ndvi.toFixed(2)} · observed {new Date(analysis.data.latest.date).toLocaleDateString()}</Text></View><Tag>{analysis.data.latest.changeFromPrevious === null ? 'FIRST PASS' : analysis.data.latest.changeFromPrevious >= 0 ? 'TREND UP' : 'TREND DOWN'}</Tag></View><Text style={[S.body, { marginTop: 12 }]}>NDVI compares how plants reflect different kinds of light. In simple terms, it estimates how much green vegetation the satellite can see in your mapped field. A lower reading can happen when a crop is young, after harvest, when soil or water is visible, or when plants may be under stress. Check the crop’s growth stage and look at the field before deciding what action to take.</Text></> : null}
     </Card>
-    {analysis.data ? <Card style={{ backgroundColor: '#f1f6ee' }}><View style={{ flexDirection: 'row', alignItems: 'center', gap: 9 }}><Icon name="satellite-variant" color={C.green} size={20} /><Text style={styles.itemTitle}>Sentinel-2 field analysis</Text></View><Text style={[S.muted, { marginTop: 7 }]}>{analysis.data.latest ? `Sentinel-2 L2A via public Earth Search · ${analysis.data.latest.validPixels.toLocaleString()} valid pixels · ${analysis.data.fieldAreaAcres} estimated acres. NDVI vigor is an indicator of vegetation reflectance, not a disease diagnosis.` : 'No usable Sentinel-2 pixels were available for this estimated field over the selected observation period. Try again after the next satellite pass.'}</Text></Card> : <Card style={{ backgroundColor: '#f1f6ee' }}><View style={{ flexDirection: 'row', alignItems: 'center', gap: 9 }}><Icon name="satellite-variant" color={C.green} size={20} /><Text style={styles.itemTitle}>Estimated field boundary</Text></View><Text style={[S.muted, { marginTop: 7 }]}>A square boundary is calculated from the saved map pin and farm area. Confirm it against the real field: a pin and area cannot describe irregular field edges or multiple plots.</Text></Card>}
-    {analysis.data && analysis.data.observations.length > 1 ? <Card><Text style={S.sectionTitle}>90-day vegetation trend</Text><Text style={[S.muted, { marginTop: 3 }]}>Average NDVI by 10-day period · cloudy or missing observations are omitted.</Text><View style={styles.ndviChart}>{analysis.data.observations.slice(-9).map(point => <View key={point.date} style={styles.ndviColumn}><Text style={styles.ndviValue}>{point.ndvi.toFixed(1)}</Text><View style={[styles.ndviBar, { height: `${Math.max(4, Math.min(100, Math.round(Math.max(0, point.ndvi) * 100)))}%` }]} /><Text style={styles.ndviDate}>{new Date(point.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</Text></View>)}</View></Card> : null}
+    {analysis.data ? <Card style={{ backgroundColor: '#f1f6ee' }}><View style={{ flexDirection: 'row', alignItems: 'center', gap: 9 }}><Icon name="satellite-variant" color={C.green} size={20} /><Text style={styles.itemTitle}>How the satellite check works</Text></View>{analysis.data.latest ? <><Text style={[S.body, { marginTop: 8 }]}>Sentinel-2 takes pictures of the Earth. We check clear image points inside your estimated field.</Text><Text style={[S.body, { marginTop: 6 }]}>Estimated field: {analysis.data.fieldAreaAcres} acres · Clear image points used: {analysis.data.latest.validPixels.toLocaleString()}</Text><Text style={[S.body, { marginTop: 6 }]}>Cloudy or missing images are left out. Your boundary is estimated from the map pin and land area, so it may not match an irregular field exactly.</Text></> : <Text style={[S.body, { marginTop: 8 }]}>No clear satellite image points were available for this estimated field in the selected period. Cloud cover can block a reading; try again after another satellite pass.</Text>}<Text style={[S.muted, { marginTop: 8 }]}>This reading shows plant greenness. It cannot identify a disease or confirm the cause of a crop problem.</Text></Card> : <Card style={{ backgroundColor: '#f1f6ee' }}><View style={{ flexDirection: 'row', alignItems: 'center', gap: 9 }}><Icon name="satellite-variant" color={C.green} size={20} /><Text style={styles.itemTitle}>Estimated field boundary</Text></View><Text style={[S.muted, { marginTop: 7 }]}>A square boundary is calculated from the saved map pin and farm area. Confirm it against the real field: a pin and area cannot describe irregular field edges or multiple plots.</Text></Card>}
+    {analysis.data && analysis.data.observations.length > 1 ? <Card><Text style={S.sectionTitle}>How the vegetation changed over 90 days</Text><Text style={[S.body, { marginTop: 5 }]}>Each bar is the average NDVI reading for a 10-day period. A taller bar means the satellite saw a stronger green-vegetation signal in that period. Look at the pattern across dates; cloud cover and normal crop growth stages can also change the readings.</Text><Text style={[S.muted, { marginTop: 5 }]}>Cloudy or missing observations are left out.</Text><View style={styles.ndviChart}>{analysis.data.observations.slice(-9).map(point => <View key={point.date} style={styles.ndviColumn}><Text style={styles.ndviValue}>{point.ndvi.toFixed(2)}</Text><View style={[styles.ndviBar, { height: `${Math.max(4, Math.min(100, Math.round(Math.max(0, point.ndvi) * 100)))}%` }]} /><Text style={styles.ndviDate}>{new Date(point.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</Text></View>)}</View></Card> : null}
     <Modal visible={pinPickerOpen} transparent animationType="fade" onRequestClose={() => setPinPickerOpen(false)}><View style={styles.mapPickerBackdrop}><Pressable style={StyleSheet.absoluteFill} onPress={() => setPinPickerOpen(false)} /><View style={styles.mapPickerPopup}><View style={styles.rowBetween}><Text style={S.sectionTitle}>Update farm pin</Text><Pressable onPress={() => setPinPickerOpen(false)} accessibilityLabel="Close farm pin picker"><Icon name="close" size={22} color={C.muted} /></Pressable></View><FarmLocationPicker state={profile.state} initialLatitude={hasPreciseLocation ? savedLat : undefined} initialLongitude={hasPreciseLocation ? savedLng : undefined} area={profile.area} onSelect={point => { setProfile({ ...profile, latitude: point.latitude.toFixed(6), longitude: point.longitude.toFixed(6) }); setPinPickerOpen(false); }} /></View></View></Modal>
     </View>;
 }
@@ -351,7 +358,13 @@ function Schemes() {
   const relevantSchemes = allSchemes.filter(scheme => scheme.relevant);
   const visibleSchemes = tab === 'For your farm' ? relevantSchemes : allSchemes;
   const openOfficial = async (url: string) => {
-    try { await Linking.openURL(url); }
+    try {
+      if (Platform.OS === 'web') {
+        window.open(url, '_blank', 'noopener,noreferrer');
+        return;
+      }
+      await Linking.openURL(url);
+    }
     catch { Alert.alert('Unable to open link', 'Please try again or visit the official website shown on this card.'); }
   };
   return <View style={styles.stack}><View style={styles.rowBetween}><View style={styles.segment}>{['For your farm', 'All schemes'].map(label => <Pressable key={label} onPress={() => setTab(label)} style={[styles.segmentItem, tab === label && styles.segmentActive]}><Text style={[styles.segmentText, tab === label && { color: C.greenDark }]}>{label === 'For your farm' && data ? `For your farm (${relevantSchemes.length})` : label === 'All schemes' && data ? `All schemes (${allSchemes.length})` : label}</Text></Pressable>)}</View><Pressable onPress={() => void refresh()}><Text style={styles.link}>Refresh</Text></Pressable></View>
@@ -387,7 +400,7 @@ function Community() {
   const [likedPosts, setLikedPosts] = useState<Record<string, boolean>>({});
   const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({});
   const [requestedExperts, setRequestedExperts] = useState<Record<string, boolean>>({});
-  const initials = profile.name.split(/\s+/).map(part => part[0]).join('').slice(0, 2).toUpperCase();
+  const initials = getInitials(profile.name);
   return <View style={styles.stack}><Card>
     <View style={styles.rowBetween}><View style={styles.segment}>{['Discussions', 'Experts'].map(t => <Pressable key={t} onPress={() => setTab(t)} style={[styles.segmentItem, tab === t && styles.segmentActive]}><Text style={[styles.segmentText, tab === t && { color: C.greenDark }]}>{t}</Text></Pressable>)}</View><Tag>{tab.toUpperCase()}</Tag></View>
     {tab === 'Discussions' ? <>
@@ -454,7 +467,7 @@ const styles = StyleSheet.create({
   languageBackdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: '#0006', padding: 12 },
   languagePopup: { width: '100%', maxWidth: 480, alignSelf: 'center', backgroundColor: C.white, borderRadius: 22, padding: 20, marginBottom: 8, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 18, shadowOffset: { width: 0, height: -4 }, elevation: 12 },
   languageOption: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 48, paddingHorizontal: 11, borderBottomWidth: 1, borderBottomColor: '#edf0ea' }, languageOptionSelected: { backgroundColor: C.greenSoft, borderRadius: 11 },
-  sidebar: { width: 250, backgroundColor: '#173b2b', paddingHorizontal: 16, paddingTop: 22, paddingBottom: 20 },
+  sidebar: { width: 250, height: '100%', flexShrink: 0, backgroundColor: '#173b2b', paddingHorizontal: 16, paddingTop: 22, paddingBottom: 20 }, sidebarMenu: { flex: 1, minHeight: 0 }, sidebarMenuContent: { paddingBottom: 8 },
   brand: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 34, paddingHorizontal: 4 }, brandMark: { width: 40, height: 40, borderRadius: 13, backgroundColor: C.green, justifyContent: 'center', alignItems: 'center' }, brandName: { color: C.white, fontSize: 17, fontWeight: '900' }, brandSub: { color: '#a8c4ac', fontSize: 9, letterSpacing: 1.2, marginTop: 2 }, sideLabel: { color: '#87a48d', fontSize: 10, fontWeight: '800', letterSpacing: 1.2, marginHorizontal: 10, marginBottom: 9 },
   sideLink: { minHeight: 43, borderRadius: 12, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 11, gap: 11, marginBottom: 4 }, sideLinkActive: { backgroundColor: '#2b6844' }, sideLinkText: { color: '#d5e0d5', fontSize: 13, flex: 1 }, sideBadge: { backgroundColor: '#b75b45', width: 19, height: 19, borderRadius: 10, alignItems: 'center', justifyContent: 'center' }, sidebarBottom: { marginTop: 'auto', padding: 13, backgroundColor: '#204b35', borderRadius: 14 },
   topbar: { height: 65, backgroundColor: C.white, borderBottomWidth: 1, borderBottomColor: C.border, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 22, gap: 12 }, crumb: { color: C.muted, fontSize: 10, fontWeight: '800', letterSpacing: 1 }, brandMarkSmall: { width: 33, height: 33, borderRadius: 11, backgroundColor: C.green, alignItems: 'center', justifyContent: 'center' }, brandMobile: { color: C.ink, fontSize: 16, fontWeight: '900' }, bell: { width: 38, height: 38, backgroundColor: '#f5f7f2', borderRadius: 12, alignItems: 'center', justifyContent: 'center' }, bellDot: { position: 'absolute', top: 8, right: 8, width: 7, height: 7, backgroundColor: C.red, borderRadius: 5 }, avatar: { width: 35, height: 35, borderRadius: 20, backgroundColor: C.greenSoft, alignItems: 'center', justifyContent: 'center' }, desktopContent: { paddingTop: 27 }, onboardContent: { flexGrow: 1, justifyContent: 'center', maxWidth: 940 }, pageHeading: { flexDirection: 'row', alignItems: 'center', marginBottom: 21, gap: 12 }, screenBody: { gap: 16 }, disclaimer: { color: '#8a9388', fontSize: 10, textAlign: 'center', marginTop: 24, paddingHorizontal: 10 },

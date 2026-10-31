@@ -4,6 +4,7 @@ import { RecordingPresets, requestRecordingPermissionsAsync, setAudioModeAsync, 
 import { C, S, Card, Divider, Icon, Tag } from './ui';
 import { detectLanguage, LanguageCode, languages } from './languages';
 import { askAssistant, ChatMessage, speak, transcribe } from './voice';
+import { useFarmProfile } from './farm-profile';
 
 const MAX_RECORDING_SECONDS = 30; // Sarvam's quick speech-to-text limit
 
@@ -30,6 +31,7 @@ export function Assistant() {
 }
 
 function AssistantChat() {
+  const { profile } = useFarmProfile();
   const [messages, setMessages] = useState<ChatMessage[]>([greeting]);
   const [draft, setDraft] = useState('');
   const [status, setStatus] = useState<Status>('idle');
@@ -73,7 +75,7 @@ function AssistantChat() {
     setError(null);
     setStatus('thinking');
     try {
-      const reply: ChatMessage = { from: 'ai', text: await askAssistant(next, language), language };
+      const reply: ChatMessage = { from: 'ai', text: await askAssistant(next, language, profile.name), language };
       setMessages([...next, reply]);
       if (spoken) play(next.length, reply); // answer aloud when the farmer spoke the question
     } catch (e) {

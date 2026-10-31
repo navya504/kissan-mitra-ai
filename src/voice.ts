@@ -27,8 +27,8 @@ export async function transcribe(uri: string) {
   return post<{ transcript: string; language: LanguageCode | null }>('/api/transcribe', form, false);
 }
 
-export async function askAssistant(messages: ChatMessage[], language: LanguageCode) {
-  const { reply } = await post<{ reply: string }>('/api/chat', JSON.stringify({ messages: messages.map(({ from, text }) => ({ from, text })), language }));
+export async function askAssistant(messages: ChatMessage[], language: LanguageCode, farmerName: string) {
+  const { reply } = await post<{ reply: string }>('/api/chat', JSON.stringify({ messages: messages.map(({ from, text }) => ({ from, text })), language, farmerName }));
   return reply;
 }
 

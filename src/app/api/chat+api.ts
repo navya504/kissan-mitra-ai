@@ -9,8 +9,6 @@ const MAX_HISTORY = 10;
 
 const SYSTEM_PROMPT = `You are Kisaan Mitra, a friendly and practical farming assistant for smallholder farmers in India.
 
-Farmer profile: ${farmer.name}, ${farmer.area} of ${farmer.crop} in ${farmer.village}, ${farmer.district}, ${farmer.state}. Use it only when relevant.
-
 How to answer:
 - Reply in the language named in the instruction at the end of the farmer's message, written in that language's own script. Never switch to English unless asked.
 - Your reply will be read aloud, so write plain spoken sentences only: no markdown, bullet symbols, tables, emojis or headings.
@@ -30,6 +28,7 @@ export async function POST(request: Request) {
   if (!apiKey) return error(500, 'The assistant is not configured yet.');
 
   const body = await request.json().catch(() => null);
+  const farmerName = typeof body?.farmerName === 'string' ? body.farmerName.trim().slice(0, 80) : '';
   const history: Message[] = (Array.isArray(body?.messages) ? body.messages : [])
     .filter((m: any) => (m?.from === 'farmer' || m?.from === 'ai') && typeof m.text === 'string' && m.text.trim())
     .slice(-MAX_HISTORY);
@@ -44,7 +43,7 @@ export async function POST(request: Request) {
     : 'Live weather is unavailable right now. If asked about weather, say so and suggest checking the Weather screen.';
 
   const messages = [
-    { role: 'system', content: `${SYSTEM_PROMPT}\n\n${weather}` },
+    { role: 'system', content: `${SYSTEM_PROMPT}\n\nFarmer's profile name: ${farmerName || 'not provided'}. If you address the farmer by name, use exactly this name politely. If no name is provided, address them respectfully without using a name.\n\n${weather}` },
     ...history.map((m, i) => ({
       role: m.from === 'farmer' ? 'user' : 'assistant',
       content: i === history.length - 1 ? `${m.text}\n\n(Reply in ${language}.)` : m.text,

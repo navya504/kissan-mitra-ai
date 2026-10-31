@@ -8,9 +8,11 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.kisaanmitra.ai"
     },
     "android": {
+      "package": "com.kisaanmitra.ai",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -20,6 +22,9 @@
       "predictiveBackGestureEnabled": false
     },
     "web": {
+      "name": "Kisaan Mitra AI",
+      "shortName": "Kisaan Mitra",
+      "themeColor": "#155936",
       "favicon": "./assets/favicon.png"
     },
     "plugins": [

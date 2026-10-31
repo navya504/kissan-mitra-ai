@@ -5,17 +5,13 @@ export const farmer = {
   state: 'Andhra Pradesh',
   crop: 'Paddy (Rice)',
   area: '10 acres',
+  latitude: 17.69,
+  longitude: 83.0,
 };
 
+// Forecast values are live: see src/forecast.ts and /api/weather.
 export const weather = {
-  temperature: 28,
-  condition: 'Partly cloudy',
-  rain: 'Rain expected tomorrow',
   location: 'Anakapalle, Andhra Pradesh',
-  days: [
-    ['Today', '28°', '☀️'], ['Sun', '30°', '🌦️'], ['Mon', '27°', '🌧️'],
-    ['Tue', '29°', '⛅'], ['Wed', '31°', '☀️'], ['Thu', '28°', '🌦️'], ['Fri', '27°', '🌧️'],
-  ],
 };
 
 export const marketPrices = [

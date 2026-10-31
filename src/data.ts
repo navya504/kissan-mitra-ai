@@ -5,13 +5,22 @@ export const farmer = {
   state: 'Andhra Pradesh',
   crop: 'Paddy (Rice)',
   area: '10 acres',
-  latitude: 17.69,
-  longitude: 83.0,
+  location: 'Anakapalle, Andhra Pradesh',
+  latitude: '17.69',
+  longitude: '83.0',
 };
 
-// Forecast values are live: see src/forecast.ts and /api/weather.
 export const weather = {
+  temperature: 28,
+  condition: 'Partly cloudy',
+  rain: 'Rain expected tomorrow',
   location: 'Anakapalle, Andhra Pradesh',
+  humidity: 68,
+  wind: 12,
+  days: [
+    ['Today', '28°', '☀️'], ['Sun', '30°', '🌦️'], ['Mon', '27°', '🌧️'],
+    ['Tue', '29°', '⛅'], ['Wed', '31°', '☀️'], ['Thu', '28°', '🌦️'], ['Fri', '27°', '🌧️'],
+  ],
 };
 
 export const marketPrices = [
@@ -38,9 +47,23 @@ export const initialTasks = [
 ];
 
 export const discussions = [
-  { name: 'Suresh Reddy', time: '1 hour ago', title: 'Best fertilizer for paddy?', body: 'I am seeing yellow leaves in my paddy. What fertilizer works best?', replies: 5, initials: 'SR' },
-  { name: 'Lakshmi Devi', time: '3 hours ago', title: 'Pest control tips', body: 'How to control stem borer naturally?', replies: 12, initials: 'LD' },
-  { name: 'Mahesh', time: '1 day ago', title: 'Good yield this season!', body: 'Sharing my experience on using organic fertilizers.', replies: 8, initials: 'M' },
+  { id: 'paddy-fertilizer', name: 'Suresh Reddy', time: '1 hour ago', title: 'Best fertilizer for paddy?', body: 'I am seeing yellow leaves in my paddy. What fertilizer works best?', likes: 14, initials: 'SR', replies: [
+    { name: 'Lakshmi Devi', body: 'A soil test can help identify what the crop needs before adding fertilizer.' },
+    { name: 'Ravi Kumar', body: 'Check whether the yellowing is across the whole field or only in patches.' },
+  ] },
+  { id: 'pest-control', name: 'Lakshmi Devi', time: '3 hours ago', title: 'Pest control tips', body: 'How to control stem borer naturally?', likes: 9, initials: 'LD', replies: [
+    { name: 'Mahesh', body: 'I inspect the field regularly and remove affected stems where practical.' },
+    { name: 'Suresh Reddy', body: 'Ask your local agriculture officer to confirm the pest before treatment.' },
+  ] },
+  { id: 'good-yield', name: 'Mahesh', time: '1 day ago', title: 'Good yield this season!', body: 'Sharing my experience on using organic fertilizers.', likes: 21, initials: 'M', replies: [
+    { name: 'Anitha', body: 'Thanks for sharing. Which crop stage did you apply it at?' },
+  ] },
+];
+
+export const communityExperts = [
+  { id: 'dr-anitha-rao', name: 'Dr. Anitha Rao', specialty: 'Paddy crop specialist', location: 'Visakhapatnam, Andhra Pradesh', rating: '4.9', reviews: 128, initials: 'AR' },
+  { id: 'ravi-kumar', name: 'Ravi Kumar', specialty: 'Soil health & nutrients', location: 'Anakapalli, Andhra Pradesh', rating: '4.8', reviews: 96, initials: 'RK' },
+  { id: 'lakshmi-naidu', name: 'Lakshmi Naidu', specialty: 'Pest management', location: 'Kakinada, Andhra Pradesh', rating: '4.9', reviews: 84, initials: 'LN' },
 ];
 
 export const navItems = [
@@ -59,9 +82,9 @@ export const screenMeta: Record<string, { title: string; subtitle: string }> = {
   'farm-plan': { title: 'Today’s Farm Plan', subtitle: 'Tuesday, 31 October 2026' },
   disease: { title: 'Crop Disease Detection', subtitle: 'Upload a photo of the affected plant part.' },
   weather: { title: 'Weather Advisory', subtitle: weather.location },
-  map: { title: 'Farm Health Map', subtitle: 'Satellite view · Updated today' },
-  yield: { title: 'Yield Prediction', subtitle: 'Paddy · Anakapalle' },
-  market: { title: 'Market Price Intelligence', subtitle: 'Paddy (Rice) · Prices are sample data' },
+  map: { title: 'Farm Health Map', subtitle: 'Satellite imagery · Your farm location' },
+  yield: { title: 'Yield Planning', subtitle: 'A clear estimate using your farm details' },
+  market: { title: 'Market Price Intelligence', subtitle: 'Paddy (Rice) · Daily mandi wholesale prices' },
   assistant: { title: 'Ask Kisaan Mitra AI', subtitle: 'Your personal farming assistant' },
   schemes: { title: 'Government Schemes', subtitle: 'Find and apply for schemes you may be eligible for' },
   notifications: { title: 'Notifications', subtitle: 'Farm updates and useful reminders' },

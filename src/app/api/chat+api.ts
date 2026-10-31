@@ -38,7 +38,7 @@ export async function POST(request: Request) {
   const code: unknown = body.language;
   const language = isLanguageCode(code) ? languages[code].name : 'English';
 
-  const forecast = await getForecast(farmer.latitude, farmer.longitude);
+  const forecast = await getForecast(Number(farmer.latitude), Number(farmer.longitude));
   const weather = forecast
     ? `Live weather forecast for ${farmer.village} (Open-Meteo):\n${forecastText(forecast)}`
     : 'Live weather is unavailable right now. If asked about weather, say so and suggest checking the Weather screen.';

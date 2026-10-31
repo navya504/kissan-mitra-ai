@@ -1,0 +1,44 @@
+[
+  {
+    "id": "annadata-sukhibhava",
+    "name": "Annadatha Sukhibhava – PM-KISAN",
+    "category": "Income support",
+    "summary": "Andhra Pradesh farmer-family support, including the central PM-KISAN component.",
+    "benefit": "The Andhra Pradesh Agriculture Department describes assistance of ₹20,000 per farmer family per year, including ₹6,000 from PM-KISAN.",
+    "eligibility": "The state describes support for landholding farmer families, RoFR cultivators, and eligible landless cultivators. The state verifies final eligibility; this app cannot confirm beneficiary status.",
+    "documents": ["Farmer and land details", "Aadhaar and bank details as requested by the official portal", "Tenant or RoFR records, if applicable"],
+    "states": ["Andhra Pradesh"],
+    "crops": ["*"],
+    "applicationUrl": "https://annadathasukhibhava.ap.gov.in/",
+    "sourceUrl": "https://tirupati.ap.gov.in/agriculture/",
+    "reviewedAt": "2026-10-31"
+  },
+  {
+    "id": "pmfby",
+    "name": "Pradhan Mantri Fasal Bima Yojana",
+    "category": "Crop insurance",
+    "summary": "Crop insurance for notified crops in notified areas and seasons.",
+    "benefit": "Insurance cover for eligible crop losses under the scheme rules. Crop, area, season, premium, and deadlines depend on current notifications.",
+    "eligibility": "Farmers with an insurable interest in a crop notified for their area and season may qualify. Check the current notification before enrolling; a paddy crop alone does not confirm eligibility.",
+    "documents": ["Farmer identity and bank details", "Land or cultivation records requested during enrolment", "Current season and crop notification"],
+    "states": ["*"],
+    "crops": ["paddy", "rice"],
+    "applicationUrl": "https://pmfby.gov.in/",
+    "sourceUrl": "https://pmfby.gov.in/",
+    "reviewedAt": "2026-10-31"
+  },
+  {
+    "id": "soil-health-card",
+    "name": "Soil Health Card",
+    "category": "Soil testing",
+    "summary": "Soil testing and nutrient recommendations to help plan crop nutrition.",
+    "benefit": "A soil report with nutrient status and recommendations; this is a soil service, not a cash benefit.",
+    "eligibility": "Ask the local Agriculture Department or Rythu Seva Kendra about soil sample collection and current service availability.",
+    "documents": ["Farm location and plot details", "Soil sample, following local collection instructions"],
+    "states": ["*"],
+    "crops": ["*"],
+    "applicationUrl": "https://soilhealth.dac.gov.in/",
+    "sourceUrl": "https://visakhapatnam.ap.gov.in/agriculture/",
+    "reviewedAt": "2026-10-31"
+  }
+]

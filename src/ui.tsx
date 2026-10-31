@@ -57,6 +57,10 @@ export function Stat({ label, value, detail, icon, color = C.green }: { label: s
   </View>;
 }
 
+export function Bullet({ text, icon = 'check-circle', color = C.green }: { text: string; icon?: any; color?: string }) {
+  return <View style={{ flexDirection: 'row', gap: 8, marginTop: 9 }}><Icon name={icon} size={16} color={color} /><Text style={[S.body, { flex: 1 }]}>{text}</Text></View>;
+}
+
 export function Divider() { return <View style={{ height: 1, backgroundColor: C.border, marginVertical: 14 }} />; }
 
 const styles = StyleSheet.create({

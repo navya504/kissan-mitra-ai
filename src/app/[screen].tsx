@@ -7,6 +7,8 @@ import { C, S, Button, Card, Divider, Icon, Stat, Tag } from '../ui';
 import { communityExperts, discussions, initialTasks, marketPrices, navItems, screenMeta, weather } from '../data';
 import { useFarmProfile } from '../farm-profile';
 import type { FarmProfileData } from '../farm-profile';
+import { Assistant } from '../assistant';
+import { CropScan } from '../crop-scan';
 import FarmLocationPicker from '../components/FarmLocationPicker';
 import { FarmMapPreview } from '../components/FarmMapPreview';
 import { useLiveWeather } from '../hooks/useLiveWeather';
@@ -17,7 +19,6 @@ import { describeWeather } from '../services/weather';
 import { languageOptions, LocalizedText as Text, LocalizedTextInput as TextInput, useLanguage } from '../i18n';
 import farmerAvatar from '../../assets/farmer-avatar.png';
 import farmerHero from '../../assets/farmer-field-hero.png';
-import riceLeafPhoto from '../../assets/rice-leaf-blight.png';
 
 const menu = [
   ['dashboard', 'Home', 'view-dashboard-outline'], ['farm-plan', 'Farm plan', 'calendar-check-outline'],
@@ -40,9 +41,6 @@ export default function ScreenRoute() {
   const { width } = useWindowDimensions();
   const desktop = width >= 900;
   const [tasks, setTasks] = useState(initialTasks.map(t => ({ ...t, done: false })));
-  const [chat, setChat] = useState([{ from: 'farmer', text: 'Why are my leaves turning yellow?' }, { from: 'ai', text: 'Yellow leaves can have a few causes: nitrogen deficiency, water stress, root disease, or over-watering. A clear crop photo will help narrow it down.' }]);
-  const [draft, setDraft] = useState('');
-  const [scanned, setScanned] = useState(false);
   const [filter, setFilter] = useState('All');
   const [locationMode, setLocationMode] = useState('Satellite');
 
@@ -50,12 +48,6 @@ export default function ScreenRoute() {
   const meta = screenMeta[screen] || screenMeta.more;
   const doneCount = tasks.filter(t => t.done).length;
   const showAppShell = !['splash', 'login', 'profile-setup', 'closing'].includes(screen);
-
-  const sendChat = (text = draft) => {
-    const clean = text.trim(); if (!clean) return;
-    setChat(old => [...old, { from: 'farmer', text: clean }, { from: 'ai', text: 'For your paddy in Anakapalle, start by checking the affected leaves and field moisture. If you share a photo, I can help assess the symptoms. This is sample guidance in the prototype.' }]);
-    setDraft('');
-  };
 
   return (
     <View style={styles.root}>
@@ -82,12 +74,12 @@ export default function ScreenRoute() {
             {screen === 'profile-setup' && <ProfileSetup go={go} profile={profile} setProfile={setProfile} returnTo={params.returnTo === 'profile' ? 'profile' : 'dashboard'} openMapInitially={params.openMap === '1'} />}
             {screen === 'dashboard' && <Dashboard go={go} desktop={desktop} />}
             {screen === 'farm-plan' && <FarmPlan tasks={tasks} setTasks={setTasks} doneCount={doneCount} />}
-            {screen === 'disease' && <Disease scanned={scanned} setScanned={setScanned} go={go} />}
+            {screen === 'disease' && <CropScan go={go} />}
             {screen === 'weather' && <WeatherScreen go={go} />}
             {screen === 'map' && <MapScreen mode={locationMode} setMode={setLocationMode} go={go} />}
             {screen === 'yield' && <YieldScreen go={go} />}
             {screen === 'market' && <MarketScreen go={go} />}
-            {screen === 'assistant' && <Assistant chat={chat} draft={draft} setDraft={setDraft} send={sendChat} />}
+            {screen === 'assistant' && <Assistant />}
             {screen === 'schemes' && <Schemes />}
             {screen === 'notifications' && <Notifications filter={filter} setFilter={setFilter} />}
             {screen === 'community' && <Community />}
@@ -261,13 +253,6 @@ function FarmPlan({ tasks, setTasks, doneCount }: { tasks: any[]; setTasks: (t: 
     {tab === 'Calendar' ? <View style={{ paddingVertical: 35, alignItems: 'center' }}><Text style={{ fontSize: 32 }}>🗓️</Text><Text style={[S.sectionTitle, { marginTop: 8 }]}>Your week at a glance</Text><Text style={[S.muted, { textAlign: 'center', marginTop: 6 }]}>7 suggested tasks this week · Tap Tasks to check items off.</Text></View> : <View style={{ gap: 18, marginTop: 15 }}>{['High', 'Medium', 'Optional'].map(priority => <View key={priority}><View style={styles.priorityHeading}><Text style={styles.itemTitle}>{priority} priority</Text><Tag tone={priority === 'High' ? 'red' : priority === 'Medium' ? 'gold' : 'green'}>{tasks.filter(t => t.priority === priority && !t.done).length} TASKS</Tag></View>{tasks.filter(t => t.priority === priority).map(task => <Pressable key={task.id} onPress={() => setTasks((old: any[]) => old.map(t => t.id === task.id ? { ...t, done: !t.done } : t))} style={styles.taskRow}><Icon name={task.done ? 'checkbox-marked-circle' : 'checkbox-blank-circle-outline'} size={23} color={task.done ? C.green : priority === 'High' ? C.red : C.muted} /><View style={{ flex: 1 }}><Text style={[styles.itemTitle, task.done && { textDecorationLine: 'line-through', color: C.muted }]}>{task.title}</Text><Text style={S.muted}>{task.note}</Text></View><Icon name="chevron-right" color={C.muted} /></Pressable>)}</View>)}</View>}</Card></View>;
 }
 
-function Disease({ scanned, setScanned, go }: { scanned: boolean; setScanned: (s: boolean) => void; go: (s: string) => void }) {
-  return <View style={styles.stack}><Card style={{ alignItems: 'center' }}><Image source={riceLeafPhoto} resizeMode="cover" style={styles.leafPhoto} /><Text style={[S.sectionTitle, { marginTop: 14 }]}>Take or upload a clear leaf photo</Text><Text style={[S.muted, { textAlign: 'center', maxWidth: 440, marginTop: 4 }]}>Keep the affected area in focus and use natural light for a more useful result.</Text><View style={styles.rowWrap}><Button title="Take photo" icon="camera-outline" onPress={() => setScanned(true)} style={{ flex: 1 }} /><Button title="Upload image" secondary icon="image-outline" onPress={() => setScanned(true)} style={{ flex: 1 }} /></View><Text style={[S.muted, { marginTop: 12 }]}>Example field photo · Scan actions are simulated</Text></Card>
-    {scanned ? <Card><View style={styles.rowBetween}><View><Text style={S.sectionTitle}>Analysis result</Text><Text style={S.muted}>AI estimate · Example result</Text></View><Tag tone="gold">82% CONFIDENCE</Tag></View><Divider /><View style={{ flexDirection: 'row', gap: 14, alignItems: 'center' }}><Text style={{ fontSize: 35 }}>🌿</Text><View style={{ flex: 1 }}><Text style={{ color: C.red, fontSize: 17, fontWeight: '800' }}>Bacterial Leaf Blight</Text><Text style={S.muted}>Moderate severity · Paddy</Text></View></View><Text style={[S.body, { marginTop: 11 }]}>A bacterial disease affecting rice leaves. It can reduce yield if it spreads.</Text><View style={styles.adviceBox}><Text style={styles.itemTitle}>Suggested next steps</Text><Bullet text="Avoid overhead irrigation while leaves are wet." /><Bullet text="Remove badly affected leaves and monitor nearby plants." /><Bullet text="Confirm diagnosis with a local agriculture expert before treatment." /></View><Button title="Ask AI about this result" icon="robot-outline" onPress={() => go('assistant')} style={{ marginTop: 14 }} /></Card> : <Card style={{ backgroundColor: '#f0f6ed' }}><Text style={styles.itemTitle}>Good to know</Text><Text style={[S.muted, { marginTop: 4 }]}>The photo diagnosis is a guide. Confirm symptoms before applying any treatment.</Text></Card>}</View>;
-}
-
-function Bullet({ text }: { text: string }) { return <View style={{ flexDirection: 'row', gap: 8, marginTop: 9 }}><Icon name="check-circle" size={16} color={C.green} /><Text style={[S.body, { flex: 1 }]}>{text}</Text></View>; }
-
 function WeatherScreen({ go }: { go: (s: string) => void }) {
   const { data, loading, error, refresh } = useLiveWeather();
   const currentDescription = data ? describeWeather(data.code) : { label: weather.condition, icon: '🌤️' };
@@ -356,10 +341,6 @@ function MarketScreen({ go }: { go: (s: string) => void }) {
   const best = [...prices].sort((a, b) => b.modalPrice - a.modalPrice)[0];
   return <View style={styles.stack}><Card><View style={styles.rowBetween}><View style={{ flex: 1 }}><Text style={S.sectionTitle}>Nearby markets</Text><Text style={S.muted}>Paddy · ₹ per quintal · {sampleMode ? 'sample prices' : 'AGMARKNET / data.gov.in'}</Text></View><Pressable onPress={() => void refresh()}><Text style={styles.link}>Refresh</Text></Pressable></View><View style={{ marginTop: 10 }}>{loading && !data ? <Text style={[S.muted, { marginVertical: 8 }]}>Checking current mandi prices…</Text> : null}{error ? <View style={{ backgroundColor: '#fff7e5', padding: 11, borderRadius: 12, marginVertical: 8 }}><Text style={{ color: C.ink, fontSize: 12 }}>{error} {sampleMode ? 'Showing sample prices until the data service is configured.' : ''}</Text></View> : null}{prices.length ? prices.map((item, i) => <View key={`${item.market}-${item.arrivalDate}`} style={styles.marketRow}><View style={styles.marketIcon}><Icon name="storefront-outline" size={18} color={C.green} /></View><View style={{ flex: 1 }}><Text style={styles.itemTitle}>{item.market}</Text><Text style={S.muted}>{item.district || (i === 0 ? 'Best price in sample' : 'Sample mandi')} · {item.arrivalDate || 'Date unavailable'}</Text></View><View style={{ alignItems: 'flex-end' }}><Text style={styles.marketPrice}>₹{item.modalPrice.toLocaleString('en-IN')}</Text><Text style={S.muted}>₹{item.minPrice.toLocaleString('en-IN')}–₹{item.maxPrice.toLocaleString('en-IN')}</Text></View></View>) : <Text style={S.muted}>No paddy listings were returned for this state.</Text>}</View></Card>
     <Card><Text style={S.sectionTitle}>Market guidance</Text><View style={styles.recommendation}><Icon name="lightbulb-on-outline" color={C.green} /><View style={{ flex: 1 }}><Text style={styles.itemTitle}>{best ? `${best.market} · ₹${best.modalPrice.toLocaleString('en-IN')} / quintal` : 'No current price available'}</Text><Text style={S.muted}>{sampleMode ? 'Illustrative price only. Compare local transport and quality deductions before deciding where to sell.' : `Highest modal price in the returned listings. Compare transport costs and grain quality before choosing a mandi. ${best?.variety ? `Variety: ${best.variety}.` : ''}`}</Text></View></View><Text style={[S.muted, { marginTop: 13 }]}>Live mandi listings show daily minimum, maximum and modal wholesale prices. They do not include transport, fees or a guaranteed sale price.</Text></Card><Button title="Ask AI about selling" icon="robot-outline" onPress={() => go('assistant')} /></View>;
-}
-
-function Assistant({ chat, draft, setDraft, send }: { chat: { from: string; text: string }[]; draft: string; setDraft: (s: string) => void; send: (s?: string) => void }) {
-  return <View style={styles.stack}><Card style={styles.assistantCard}><View style={styles.assistantHeader}><View style={styles.assistantAvatar}><Icon name="sprout" color={C.white} size={23} /></View><View><Text style={styles.itemTitle}>Kisaan Mitra</Text><Text style={S.muted}>Your farming assistant · Sample responses</Text></View><View style={{ flex: 1 }} /><Tag>ONLINE</Tag></View><Divider /><View style={{ gap: 13 }}>{chat.map((m, i) => <View key={i} style={[styles.chatBubble, m.from === 'farmer' ? styles.chatFarmer : styles.chatAI]}><Text style={[S.body, m.from === 'farmer' && { color: C.white }]}>{m.text}</Text></View>)}</View><Text style={[styles.inputLabel, { marginTop: 17 }]}>Suggested questions</Text><View style={styles.chips}>{['Suggest fertilizers', 'When to irrigate?', 'Today’s weather'].map((q, i) => <Pressable key={q} onPress={() => send(q)} style={styles.questionChip}><Text style={{ fontSize: 12, color: C.greenDark }}>{['🌱', '💧', '🌤️'][i]}  {q}</Text></Pressable>)}</View><View style={styles.composer}><TextInput value={draft} onChangeText={setDraft} onSubmitEditing={() => send()} placeholder="Type your question..." style={styles.composerInput} /><Pressable onPress={() => send()} style={styles.sendButton}><Icon name="arrow-up" size={20} color={C.white} /></Pressable></View><Pressable onPress={() => send('What should I do on my farm today?')} style={styles.voiceButton}><Icon name="microphone" size={24} color={C.white} /><Text style={{ color: C.white, fontWeight: '700' }}>Tap to speak (demo)</Text></Pressable></Card><Text style={S.muted}>AI responses are illustrative. Check important crop decisions with a qualified local expert.</Text></View>;
 }
 
 function Schemes() {

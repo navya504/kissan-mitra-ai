@@ -25,10 +25,24 @@
       "name": "Kisaan Mitra AI",
       "shortName": "Kisaan Mitra",
       "themeColor": "#155936",
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "output": "server"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Kisaan Mitra AI uses your photos so you can check a crop for disease.",
+          "cameraPermission": "Kisaan Mitra AI uses your camera so you can photograph a crop and check it for disease."
+        }
+      ],
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Kisaan Mitra AI uses your microphone so you can ask farming questions by voice in your own language."
+        }
+      ]
     ]
   }
 }

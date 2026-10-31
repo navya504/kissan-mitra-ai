@@ -6,8 +6,8 @@ export const farmer = {
   crop: 'Paddy (Rice)',
   area: '10 acres',
   location: 'Anakapalle, Andhra Pradesh',
-  latitude: '',
-  longitude: '',
+  latitude: '17.69',
+  longitude: '83.0',
 };
 
 export const weather = {
@@ -15,6 +15,8 @@ export const weather = {
   condition: 'Partly cloudy',
   rain: 'Rain expected tomorrow',
   location: 'Anakapalle, Andhra Pradesh',
+  humidity: 68,
+  wind: 12,
   days: [
     ['Today', '28°', '☀️'], ['Sun', '30°', '🌦️'], ['Mon', '27°', '🌧️'],
     ['Tue', '29°', '⛅'], ['Wed', '31°', '☀️'], ['Thu', '28°', '🌦️'], ['Fri', '27°', '🌧️'],

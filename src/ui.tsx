@@ -1,6 +1,7 @@
 import { ReactNode } from 'react';
-import { Pressable, StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native';
+import { Pressable, StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { LocalizedText as Text } from './i18n';
 
 export const C = {
   ink: '#1f3328', muted: '#738074', green: '#247447', greenDark: '#155936',

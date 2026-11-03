@@ -6,6 +6,7 @@ import { isLanguageCode, languages } from '../../languages';
 const BASE_URL = process.env.NEBIUS_BASE_URL || 'https://api.tokenfactory.nebius.com/v1';
 const MODEL = process.env.NEBIUS_CHAT_MODEL || 'moonshotai/Kimi-K3';
 const MAX_HISTORY = 10;
+const REQUEST_TIMEOUT_MS = 120_000;
 
 const SYSTEM_PROMPT = `You are Kisaan Mitra, a friendly and practical farming assistant for smallholder farmers in India.
 
@@ -52,12 +53,14 @@ export async function POST(request: Request) {
 
   let upstream: Response;
   try {
-    upstream = await fetch(`${BASE_URL}/chat/completions`, {
+    const requestOptions = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
       body: JSON.stringify({ model: MODEL, messages, temperature: 0.4, max_tokens: 4000 }), // Kimi thinks before answering
-      signal: AbortSignal.timeout(60_000),
-    });
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      connectTimeout: REQUEST_TIMEOUT_MS,
+    } as RequestInit & { connectTimeout: number };
+    upstream = await fetch(`${BASE_URL}/chat/completions`, requestOptions);
   } catch (e) {
     console.error('[chat] request to Nebius failed', e);
     return error(504, 'The assistant did not respond. Please try again.');

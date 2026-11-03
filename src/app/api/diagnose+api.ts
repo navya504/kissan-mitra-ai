@@ -4,6 +4,7 @@ import type { Diagnosis, PathogenType, Severity } from '../../diagnosis';
 const BASE_URL = process.env.NEBIUS_BASE_URL || 'https://api.tokenfactory.nebius.com/v1';
 const MODEL = process.env.NEBIUS_VISION_MODEL || 'moonshotai/Kimi-K3';
 const MAX_IMAGE_CHARS = 8_000_000; // ~6 MB of JPEG once base64-encoded
+const REQUEST_TIMEOUT_MS = 120_000;
 
 const SYSTEM_PROMPT = `You are an experienced plant pathologist and agronomist advising smallholder farmers in India.
 You will receive one photo of a crop plant (leaf, stem, fruit, panicle, root or whole plant) and optionally the farmer's location.
@@ -54,10 +55,12 @@ export async function POST(request: Request) {
 
   let upstream: Response;
   try {
-    upstream = await fetch(`${BASE_URL}/chat/completions`, {
+    const requestOptions = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-      signal: AbortSignal.timeout(60_000),
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      // Expo's Node fetch shim otherwise applies its own 30-second socket timeout.
+      connectTimeout: REQUEST_TIMEOUT_MS,
       body: JSON.stringify({
         model: MODEL,
         temperature: 0.2,
@@ -73,7 +76,8 @@ export async function POST(request: Request) {
           },
         ],
       }),
-    });
+    } as RequestInit & { connectTimeout: number };
+    upstream = await fetch(`${BASE_URL}/chat/completions`, requestOptions);
   } catch (e) {
     console.error('[diagnose] request to Nebius failed', e);
     return error(504, 'The diagnosis service did not respond. Please try again.');

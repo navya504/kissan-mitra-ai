@@ -76,7 +76,7 @@ async function getSchemes(url) {
       relevant: scheme.crops.some(value => value === '*' || value.toLowerCase() === crop),
     }))
     .sort((a, b) => Number(b.relevant) - Number(a.relevant));
-  return { source: 'reviewed_official_sources', updatedAt: '2026-10-31', schemes: matching };
+  return { source: 'reviewed_official_sources', updatedAt: new Date().toISOString(), schemes: matching };
 }
 
 function farmSquare(latitude, longitude, areaText) {

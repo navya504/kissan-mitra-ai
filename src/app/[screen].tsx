@@ -37,6 +37,7 @@ export default function ScreenRoute() {
   const params = useLocalSearchParams<{ screen: string; returnTo?: string; openMap?: string }>();
   const screen = params.screen || 'dashboard';
   const { profile, setProfile } = useFarmProfile();
+  const { language } = useLanguage();
   const router = useRouter();
   const { width } = useWindowDimensions();
   const desktop = width >= 900;
@@ -48,6 +49,7 @@ export default function ScreenRoute() {
   const meta = screenMeta[screen] || screenMeta.more;
   const doneCount = tasks.filter(t => t.done).length;
   const showAppShell = !['splash', 'login', 'profile-setup', 'closing'].includes(screen);
+  const pageSubtitle = screen === 'farm-plan' ? formatCurrentDate(language) : meta.subtitle;
 
   return (
     <View style={styles.root}>
@@ -61,7 +63,7 @@ export default function ScreenRoute() {
       </View> : null}
       <View style={styles.main}>
         {showAppShell ? <View style={styles.topbar}>
-          {!desktop ? <Pressable onPress={() => go('dashboard')} style={styles.brandMarkSmall}><Icon name="sprout" color={C.white} size={19} /></Pressable> : <Text style={styles.crumb}>FARM OVERVIEW <Text style={{ color: C.green }}> / {meta.title.toUpperCase()}</Text></Text>}
+          {!desktop ? <Pressable onPress={() => go('dashboard')} style={styles.brandMarkSmall}><Icon name="sprout" color={C.white} size={19} /></Pressable> : <Text style={styles.crumb}>FARM OVERVIEW <Text style={{ color: C.green }}> / {screen === 'dashboard' ? 'HOME' : meta.title.toUpperCase()}</Text></Text>}
           {!desktop ? <Text style={styles.brandMobile}>Kisaan Mitra <Text style={{ color: C.green }}>AI</Text></Text> : null}
           <View style={{ flex: 1 }} />
           <Pressable onPress={() => go('notifications')} style={styles.bell}><Icon name="bell-outline" size={20} color={C.ink} /><View style={styles.bellDot} /></Pressable>
@@ -69,7 +71,7 @@ export default function ScreenRoute() {
         </View> : null}
 
         <ScrollView contentContainerStyle={[S.content, desktop && styles.desktopContent, !showAppShell && styles.onboardContent]} showsVerticalScrollIndicator={false}>
-          {showAppShell ? <View style={styles.pageHeading}><View style={{ flex: 1 }}><Text style={S.title}>{screen === 'dashboard' ? `Good morning, ${profile.name}! 👋` : meta.title}</Text><Text style={S.subtitle}>{meta.subtitle}</Text></View></View> : null}
+          {showAppShell ? <View style={styles.pageHeading}><View style={{ flex: 1 }}><Text style={S.title}>{screen === 'dashboard' ? `Good morning, ${profile.name}! 👋` : meta.title}</Text><Text style={S.subtitle}>{pageSubtitle}</Text></View></View> : null}
           <View style={styles.screenBody}>
             {screen === 'splash' && <Splash go={go} />}
             {screen === 'login' && <Login go={go} />}
@@ -278,6 +280,19 @@ function formatCrop(crop: string) {
   return value ? value[0].toLocaleUpperCase() + value.slice(1) : 'Not set';
 }
 
+function formatCurrentDate(language: string) {
+  return formatDate(new Date(), language, true);
+}
+
+function formatDate(date: Date, language: string, includeWeekday = false) {
+  const locale: Record<string, string> = {
+    English: 'en-IN', Telugu: 'te-IN', Hindi: 'hi-IN', Tamil: 'ta-IN', Kannada: 'kn-IN', Marathi: 'mr-IN',
+  };
+  return new Intl.DateTimeFormat(locale[language] || 'en-IN', {
+    timeZone: 'Asia/Kolkata', ...(includeWeekday ? { weekday: 'long' as const } : {}), day: 'numeric', month: 'long', year: 'numeric',
+  }).format(date);
+}
+
 function formatFarmArea(area: string) {
   const value = area.trim();
   if (!value) return 'Not set';
@@ -351,6 +366,7 @@ function MarketScreen({ go }: { go: (s: string) => void }) {
 }
 
 function Schemes() {
+  const { language } = useLanguage();
   const [tab, setTab] = useState('For your farm');
   const [expanded, setExpanded] = useState('');
   const { data, loading, error, refresh } = useGovernmentSchemes();
@@ -375,7 +391,7 @@ function Schemes() {
       <View style={{ flexDirection: 'row', gap: 10, marginTop: 13, flexWrap: 'wrap' }}><Button title="Check official details" icon="open-in-new" onPress={() => void openOfficial(scheme.applicationUrl)} style={{ flexGrow: 1 }} /><Button title={expanded === scheme.id ? 'Hide details' : 'More details'} secondary icon="text-box-outline" onPress={() => setExpanded(expanded === scheme.id ? '' : scheme.id)} style={{ flexGrow: 1 }} /></View>
     </Card>)}
     {!loading && data && visibleSchemes.length === 0 ? <Card><Text style={styles.itemTitle}>No matches for this farm yet</Text><Text style={[S.muted, { marginTop: 5 }]}>Browse all schemes or ask your local Agriculture Department about current programmes.</Text></Card> : null}
-    <Card style={{ backgroundColor: '#f1f6ee' }}><Text style={styles.itemTitle}>Please confirm before applying</Text><Text style={[S.muted, { marginTop: 5 }]}>These recommendations use the farm’s state and crop. They do not confirm eligibility or beneficiary status. Rules, notified crops, and application dates can change; the relevant government department makes the final decision.</Text><Text style={[S.muted, { marginTop: 7 }]}>Catalogue last reviewed {data?.updatedAt ?? 'not available'}.</Text></Card></View>;
+    <Card style={{ backgroundColor: '#f1f6ee' }}><Text style={styles.itemTitle}>Please confirm before applying</Text><Text style={[S.muted, { marginTop: 5 }]}>These recommendations use the farm’s state and crop. They do not confirm eligibility or beneficiary status. Rules, notified crops, and application dates can change; the relevant government department makes the final decision.</Text><Text style={[S.muted, { marginTop: 7 }]}>Catalogue loaded {data?.updatedAt ? formatDate(new Date(data.updatedAt), language) : 'date unavailable'}.</Text></Card></View>;
 }
 
 function Notifications({ filter, setFilter }: { filter: string; setFilter: (s: string) => void }) {

@@ -79,7 +79,7 @@ export const screenMeta: Record<string, { title: string; subtitle: string }> = {
   login: { title: 'Welcome to Kisaan Mitra AI', subtitle: 'Let’s grow together' },
   'profile-setup': { title: 'Tell us about you', subtitle: 'A few details help us personalize your recommendations.' },
   dashboard: { title: 'Good morning, Ramesh! 👋', subtitle: 'Healthy farms, prosperous lives' },
-  'farm-plan': { title: 'Today’s Farm Plan', subtitle: 'Tuesday, 31 October 2026' },
+  'farm-plan': { title: 'Today’s Farm Plan', subtitle: '' },
   disease: { title: 'Crop Disease Detection', subtitle: 'Upload a photo of the affected plant part.' },
   weather: { title: 'Weather Advisory', subtitle: weather.location },
   map: { title: 'Farm Health Map', subtitle: 'Satellite imagery · Your farm location' },

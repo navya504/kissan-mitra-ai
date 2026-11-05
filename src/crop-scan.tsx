@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { ActivityIndicator, Image, Platform, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Platform, StyleSheet, View } from 'react-native';
+import { LocalizedText as Text } from './i18n';
 import * as ImagePicker from 'expo-image-picker';
 import { C, S, Bullet, Button, Card, Divider, Icon, Tag } from './ui';
 import { farmer } from './data';

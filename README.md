@@ -58,6 +58,7 @@ Copy the root `.env.example` to `.env.local` (or `.env`) and set only the keys f
 | `GOOGLE_MAPS_ANDROID_API_KEY` | Native Android map | Optional; rebuild native app after setting |
 | `GOOGLE_MAPS_IOS_API_KEY` | Native iOS map | Optional; rebuild native app after setting |
 | `EXPO_PUBLIC_API_BASE_URL` | Node API address for web/phone clients | Optional; defaults to `http://localhost:4000` |
+| `EXPO_PUBLIC_APP_API_BASE_URL` | Expo Router server address for voice/chat on Android and iOS | Optional during Expo development; set to the deployed app origin for production unless Router's `origin` is configured |
 
 The backend reads `backend/.env`:
 
@@ -67,6 +68,16 @@ The backend reads `backend/.env`:
 | `PORT` | Backend port; defaults to `4000` |
 
 No Copernicus client ID or secret is needed for satellite analysis. The Sentinel-2 public catalogue is best-effort and can have delays, cloud cover, or missing imagery for a particular field.
+
+## Voice assistant
+
+Sarvam powers dictation, read-aloud controls and push-to-talk commands. Set `SARVAM_API_KEY` in the root `.env.local` and restart Expo. Ask AI and profit explanations also require `NEBIUS_API_KEY`. Keys stay on the server.
+
+Fields offer dictation; dialogs offer read-aloud and command controls. Commands include `open weather`, visible button labels, numbered choices, and `submit`. Voice submissions require a separate `confirm`. Command help accepts typed commands without a microphone. This uses a defined vocabulary, not unrestricted voice control.
+
+Profile setup includes guided voice registration in the selected app language. It collects farm details, reads them back, and requires an exact map pin and explicit confirmation before saving. The editable form remains available.
+
+On physical phones, use a reachable Expo Router server for speech/chat. Set `EXPO_PUBLIC_APP_API_BASE_URL` to its origin for production native builds; this differs from the Node data API. Web recording requires HTTPS or localhost and microphone permission.
 
 ## Data API
 
@@ -80,6 +91,18 @@ The Node service started by `npm run api` provides:
 | `POST /api/satellite/analysis` | Search Sentinel-2 scenes and calculate field NDVI from farm pin and area |
 
 Expo Router server routes provide `GET /api/weather`, `POST /api/diagnose`, `POST /api/chat`, `POST /api/transcribe`, and `POST /api/speak`. They use the root environment variables above. Deploy these server routes with the app for production; local development runs them through Expo's web server.
+
+## Profit planning
+
+Open **Profit routes** in Ask AI, or ask for the top profit routes. Enter expected saleable harvest, cultivation costs and one or two recent buyer offers with selling costs. The server calculates net profit, break-even price and a lower-price stress scenario; Nebius explains the ranked options and generates farm-specific checklists. Missing AI output uses a labelled standard checklist.
+
+Results compare farmer-entered offers, not every possible route or guaranteed future prices. Refresh quantities, costs and quotes before selling. Checklist progress is session state.
+
+Run regression checks without live provider keys:
+
+```powershell
+node --test tests/*.test.mjs
+```
 
 ## Screen flow
 

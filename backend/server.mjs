@@ -196,7 +196,9 @@ async function getSatelliteAnalysis(payload) {
   const field = farmSquare(latitude, longitude, payload.area);
   const cacheKey = `${latitude.toFixed(5)}:${longitude.toFixed(5)}:${field.areaAcres.toFixed(2)}`;
   const cached = satelliteCache.get(cacheKey);
-  if (cached && Date.now() - cached.at < 3 * 60 * 60 * 1000) return { result: cached.result };
+  if (cached && Date.now() - cached.at < 3 * 60 * 60 * 1000) {
+    return { result: { ...cached.result, checkedAt: new Date().toISOString() } };
+  }
   const to = new Date();
   const from = new Date(to.getTime() - 90 * 24 * 60 * 60 * 1000);
   const bbox = [longitude - Math.sqrt(field.areaAcres * 4046.8564224) / (2 * 111320 * Math.max(0.1, Math.cos(latitude * Math.PI / 180))), latitude - Math.sqrt(field.areaAcres * 4046.8564224) / (2 * 111320), longitude + Math.sqrt(field.areaAcres * 4046.8564224) / (2 * 111320 * Math.max(0.1, Math.cos(latitude * Math.PI / 180))), latitude + Math.sqrt(field.areaAcres * 4046.8564224) / (2 * 111320)];
@@ -231,11 +233,14 @@ async function getSatelliteAnalysis(payload) {
     }
   }
   if (!points.length && failedScenes) throw new Error('Could not read the public Sentinel-2 imagery. Please try again later.');
-  if (!points.length) return { result: { source: 'Sentinel-2 L2A via Earth Search', analyzedAt: new Date().toISOString(), fieldAreaAcres: Number(field.areaAcres.toFixed(2)), boundaryMethod: 'estimated_square_from_pin_and_area', observations: [], latest: null } };
+  if (!points.length) {
+    const now = new Date().toISOString();
+    return { result: { source: 'Sentinel-2 L2A via Earth Search', analyzedAt: now, checkedAt: now, fieldAreaAcres: Number(field.areaAcres.toFixed(2)), boundaryMethod: 'estimated_square_from_pin_and_area', observations: [], latest: null } };
+  }
   const latest = points.at(-1);
   const previous = points.length > 1 ? points.at(-2) : null;
   const result = {
-    source: 'Sentinel-2 L2A via Earth Search', analyzedAt: new Date().toISOString(), fieldAreaAcres: Number(field.areaAcres.toFixed(2)),
+    source: 'Sentinel-2 L2A via Earth Search', analyzedAt: new Date().toISOString(), checkedAt: new Date().toISOString(), fieldAreaAcres: Number(field.areaAcres.toFixed(2)),
     boundaryMethod: 'estimated_square_from_pin_and_area',
     latest: { date: latest.date, ndvi: Number(latest.mean.toFixed(3)), vigorScore: Math.max(0, Math.min(100, Math.round(latest.mean * 100))), validPixels: latest.samples,
       changeFromPrevious: previous ? Number((latest.mean - previous.mean).toFixed(3)) : null },

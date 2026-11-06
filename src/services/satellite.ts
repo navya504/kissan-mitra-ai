@@ -4,6 +4,7 @@ export type SatelliteObservation = { date: string; ndvi: number; validPixels: nu
 export type SatelliteAnalysis = {
   source: 'Sentinel-2 L2A via Earth Search';
   analyzedAt: string;
+  checkedAt: string;
   fieldAreaAcres: number;
   boundaryMethod: 'estimated_square_from_pin_and_area';
   latest: null | { date: string; ndvi: number; vigorScore: number; validPixels: number; changeFromPrevious: number | null };

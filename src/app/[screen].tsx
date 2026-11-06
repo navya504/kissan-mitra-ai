@@ -1,8 +1,15 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import type { Metadata } from 'expo-router/server';
 import * as Linking from 'expo-linking';
-import { useState } from 'react';
-import { Alert, Image, ImageBackground, Modal, Platform, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useEffect, useState } from 'react';
+import { Image, ImageBackground, Platform, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { VoiceModal as Modal } from '../components/VoiceModal';
+import { VoiceHint, useSpeechAccess } from '../speech-access';
+import { VoiceAction, VoiceCommandScope } from '../voice-command-context';
+import { VoiceCommandBar } from '../voice-command-ui';
+import { VoiceRegistrationGuide } from '../components/VoiceRegistrationGuide';
+import { registrationPinValid, registrationValue, registrationFields } from '../registration-guide';
 import { C, S, Button, Card, Divider, Icon, Stat, Tag } from '../ui';
 import { communityExperts, discussions, initialTasks, marketPrices, navItems, screenMeta, weather } from '../data';
 import { useFarmProfile } from '../farm-profile';
@@ -34,13 +41,18 @@ export function generateMetadata(): Metadata {
 }
 
 export default function ScreenRoute() {
-  const params = useLocalSearchParams<{ screen: string; returnTo?: string; openMap?: string }>();
+  const params = useLocalSearchParams<{ screen: string; returnTo?: string; openMap?: string; intent?: string }>();
   const screen = params.screen || 'dashboard';
+  const speech = useSpeechAccess();
+  const stopSpeech = speech?.stop;
+  useEffect(() => () => stopSpeech?.(), [screen, stopSpeech]);
   const { profile, setProfile } = useFarmProfile();
   const { language } = useLanguage();
   const router = useRouter();
   const { width } = useWindowDimensions();
   const desktop = width >= 900;
+  const insets = useSafeAreaInsets();
+  const activeBottomRoute = ['dashboard', 'disease', 'assistant', 'farm-plan'].includes(screen) ? screen : 'more';
   const [tasks, setTasks] = useState(initialTasks.map(t => ({ ...t, done: false })));
   const [filter, setFilter] = useState('All');
   const [locationMode, setLocationMode] = useState('Satellite');
@@ -52,7 +64,7 @@ export default function ScreenRoute() {
   const pageSubtitle = screen === 'farm-plan' ? formatCurrentDate(language) : meta.subtitle;
 
   return (
-    <View style={styles.root}>
+    <View style={[styles.root, { paddingTop: insets.top }]}>
       {showAppShell && desktop ? <View style={styles.sidebar}>
         <Pressable onPress={() => go('dashboard')} style={styles.brand}><View style={styles.brandMark}><Icon name="sprout" color={C.white} size={23} /></View><View><Text style={styles.brandName}>Kisaan Mitra</Text><Text style={styles.brandSub}>AI FARMING COMPANION</Text></View></Pressable>
         <Text style={styles.sideLabel}>YOUR FARM</Text>
@@ -71,8 +83,10 @@ export default function ScreenRoute() {
         </View> : null}
 
         <ScrollView contentContainerStyle={[S.content, desktop && styles.desktopContent, !showAppShell && styles.onboardContent]} showsVerticalScrollIndicator={false}>
-          {showAppShell ? <View style={styles.pageHeading}><View style={{ flex: 1 }}><Text style={S.title}>{screen === 'dashboard' ? `Good morning, ${profile.name}! 👋` : meta.title}</Text><Text style={S.subtitle}>{pageSubtitle}</Text></View></View> : null}
+          {showAppShell ? <View style={styles.pageHeading}><View style={{ flex: 1 }}><Text style={S.title}>{screen === 'dashboard' ? 'Your farm overview' : meta.title}</Text><Text style={S.subtitle}>{pageSubtitle}</Text></View></View> : null}
           <View style={styles.screenBody}>
+            <VoiceCommandScope key={screen}>
+            <VoiceCommandBar />
             {screen === 'splash' && <Splash go={go} />}
             {screen === 'login' && <Login go={go} />}
             {screen === 'profile-setup' && <ProfileSetup go={go} profile={profile} setProfile={setProfile} returnTo={params.returnTo === 'profile' ? 'profile' : 'dashboard'} openMapInitially={params.openMap === '1'} />}
@@ -83,7 +97,7 @@ export default function ScreenRoute() {
             {screen === 'map' && <MapScreen mode={locationMode} setMode={setLocationMode} go={go} />}
             {screen === 'yield' && <YieldScreen go={go} />}
             {screen === 'market' && <MarketScreen go={go} />}
-            {screen === 'assistant' && <Assistant />}
+            {screen === 'assistant' && <Assistant initialProfitPlanning={params.intent === 'profit'} />}
             {screen === 'schemes' && <Schemes />}
             {screen === 'notifications' && <Notifications filter={filter} setFilter={setFilter} />}
             {screen === 'community' && <Community />}
@@ -91,10 +105,12 @@ export default function ScreenRoute() {
             {screen === 'more' && <More go={go} />}
             {screen === 'closing' && <Closing go={go} />}
             {!screenMeta[screen] && <More go={go} />}
+            <VoiceHint />
+            </VoiceCommandScope>
           </View>
           <Text style={styles.disclaimer}>Prototype with sample data · Advice should be confirmed with a local agriculture expert.</Text>
         </ScrollView>
-        {showAppShell && !desktop ? <View style={styles.bottomNav}>{navItems.map(item => <Pressable key={item.route} onPress={() => go(item.route)} style={styles.bottomItem}><Icon name={item.icon === 'home' ? 'home-variant' : item.icon === 'scan' ? 'line-scan' : item.icon === 'mic' ? 'microphone-outline' : item.icon === 'check' ? 'checkbox-marked-circle-outline' : 'dots-horizontal'} size={20} color={screen === item.route ? C.green : C.muted} /><Text style={[styles.bottomText, screen === item.route && { color: C.green, fontWeight: '800' }]}>{item.label}</Text></Pressable>)}</View> : null}
+        {showAppShell && !desktop ? <View style={[styles.bottomNav, { paddingBottom: Math.max(10, insets.bottom) }]}>{navItems.map(item => <Pressable accessibilityRole="button" accessibilityState={{ selected: activeBottomRoute === item.route }} accessibilityLabel={item.label} key={item.route} onPress={() => go(item.route)} style={styles.bottomItem}><View style={[styles.bottomIcon, activeBottomRoute === item.route && { backgroundColor: C.green }]}><Icon name={item.icon === 'home' ? 'home-variant' : item.icon === 'scan' ? 'line-scan' : item.icon === 'mic' ? 'microphone-outline' : item.icon === 'check' ? 'checkbox-marked-circle-outline' : 'dots-horizontal'} size={21} color={activeBottomRoute === item.route ? C.white : C.muted} /></View><Text style={[styles.bottomText, activeBottomRoute === item.route && { color: C.greenDark, fontWeight: '800' }]}>{item.label}</Text></Pressable>)}</View> : null}
       </View>
     </View>
   );
@@ -169,29 +185,28 @@ function ProfileSetup({ go, profile, setProfile, returnTo, openMapInitially }: {
   const update = (key: keyof FarmProfileData, value: string) => setDraft(current => ({ ...current, [key]: value }));
   const save = () => {
     const cleaned = Object.fromEntries(Object.entries(draft).map(([key, value]) => [key, value.trim()])) as FarmProfileData;
-    if (!cleaned.name || !cleaned.state || !cleaned.district || !cleaned.village || !cleaned.crop || !cleaned.area) {
-      setFormError('Please enter your name, state, district, village, farm area, and main crop.');
-      return;
+    for (const field of registrationFields) {
+      const answer = registrationValue(field, cleaned[field], statesOfIndia);
+      if (!answer.value) { setFormError(`${field}: ${answer.error}`); return false; }
+      cleaned[field] = answer.value;
     }
-    if (!/^\d+(\.\d+)?\s*(acres?|hectares?|ha)?$/i.test(cleaned.area)) {
-      setFormError('Enter a valid farm area, such as 2 acres or 0.8 hectares.');
-      return;
-    }
-    if (!cleaned.latitude || !cleaned.longitude) {
+    if (!registrationPinValid(cleaned)) {
       setFormError('Tap the map pin, move it to your farm, then choose “Use this pin.”');
-      return;
+      return false;
     }
     setFormError('');
     setProfile({ ...cleaned, location: [cleaned.village, cleaned.district, cleaned.state].join(', ') });
     go(returnTo);
+    return true;
   };
   return <View style={styles.onboardWrap}><Text style={[S.title, { textAlign: 'center' }]}>Tell us about your farm</Text><Text style={[S.subtitle, { textAlign: 'center', marginBottom: 20 }]}>Enter your details. You can update them later from My Profile.</Text><Card style={{ width: '100%', maxWidth: 500 }}>
+    <VoiceRegistrationGuide draft={draft} states={statesOfIndia} onChange={value => { setDraft(value); setFormError(''); }} onSave={save} onChooseMap={() => { setFormError(''); setMapOpen(true); }} mapOpen={mapOpen} />
     <InputRow label="Full name" value={draft.name} onChangeText={value => { update('name', value); setFormError(''); }} placeholder="Enter your name" />
     <SelectRow label="State" value={draft.state} placeholder="Select your state" options={statesOfIndia} onSelect={value => { setDraft(current => ({ ...current, state: value, district: '', village: '', location: '', latitude: '', longitude: '' })); setFormError(''); }} />
     <SelectRow label="District" value={draft.district} placeholder={draft.state ? 'Select or search for your district' : 'Select a state first'} options={districtSuggestions[draft.state] ?? []} disabled={!draft.state} onSelect={value => { setDraft(current => ({ ...current, district: value, village: '', location: '', latitude: '', longitude: '' })); setFormError(''); }} />
     <SelectRow label="Village" value={draft.village} placeholder={draft.district ? 'Select or enter your village' : 'Select a district first'} options={draft.village ? [draft.village] : []} disabled={!draft.district} onSelect={value => { setDraft(current => ({ ...current, village: value, location: '', latitude: '', longitude: '' })); setFormError(''); }} />
     <View style={{ flexDirection: 'row', gap: 12 }}><View style={{ flex: 1 }}><InputRow label="Farm area" value={draft.area} onChangeText={value => { update('area', value); setFormError(''); }} placeholder="e.g. 2 acres" /></View><View style={{ flex: 1 }}><InputRow label="Main crop" value={draft.crop} onChangeText={value => { update('crop', value); setFormError(''); }} placeholder="e.g. Paddy" /></View></View>
-    <Card style={styles.locationCard}><Icon name="map-marker" size={18} color={C.green} /><View style={{ flex: 1 }}><Text style={styles.inputLabel}>Farm location</Text><Text style={S.muted}>{[draft.village, draft.district, draft.state].filter(Boolean).join(', ') || 'Select village, district, and state'}</Text>{draft.latitude && draft.longitude ? <Text style={[S.muted, { marginTop: 3 }]}>{draft.latitude}, {draft.longitude}</Text> : <Text style={[S.muted, { marginTop: 3 }]}>Tap the pin to set your exact field location.</Text>}</View><Pressable onPress={() => { setFormError(''); setMapOpen(true); }} accessibilityRole="button" accessibilityLabel="Choose farm location on map" hitSlop={10} style={{ padding: 5 }}><Icon name="map-marker-check-outline" size={21} color={C.green} /></Pressable></Card>
+    <Card style={styles.locationCard}><Icon name="map-marker" size={18} color={C.green} /><View style={{ flex: 1 }}><Text style={styles.inputLabel}>Farm location</Text><Text style={S.muted}>{[draft.village, draft.district, draft.state].filter(Boolean).join(', ') || 'Select village, district, and state'}</Text>{draft.latitude && draft.longitude ? <Text style={[S.muted, { marginTop: 3 }]}>{draft.latitude}, {draft.longitude}</Text> : <Text style={[S.muted, { marginTop: 3 }]}>Tap the pin to set your exact field location.</Text>}</View><VoiceAction label="Choose farm location on map" onPress={() => { setFormError(''); setMapOpen(true); }} accessibilityRole="button" accessibilityLabel="Choose farm location on map" hitSlop={10} style={{ padding: 5 }}><Icon name="map-marker-check-outline" size={21} color={C.green} /></VoiceAction></Card>
     {formError ? <Text accessibilityRole="alert" style={styles.formError}>{formError}</Text> : null}
     <Button title={returnTo === 'profile' ? 'Save farm details' : 'Continue to my farm'} icon="arrow-right" onPress={save} style={{ marginTop: 16 }} />
   </Card>
@@ -210,9 +225,9 @@ function SelectRow({ label, value, placeholder, options, onSelect, disabled = fa
   const [query, setQuery] = useState('');
   const filtered = options.filter(option => option.toLowerCase().includes(query.trim().toLowerCase()));
   const select = (option: string) => { onSelect(option); setOpen(false); setQuery(''); };
-  return <View style={{ marginBottom: 13 }}><Text style={styles.inputLabel}>{label}</Text><Pressable disabled={disabled} onPress={() => { setQuery(value); setOpen(true); }} accessibilityRole="button" style={[styles.selectField, disabled && { opacity: 0.55 }]}><Text style={[value ? S.body : S.muted, { flex: 1 }]}>{value || placeholder}</Text><Icon name="chevron-down" size={19} color={C.muted} /></Pressable>
+  return <View style={{ marginBottom: 13 }}><Text style={styles.inputLabel}>{label}</Text><VoiceAction label={`Open ${label}`} disabled={disabled} onPress={() => { setQuery(value); setOpen(true); }} accessibilityRole="button" style={[styles.selectField, disabled && { opacity: 0.55 }]}><Text style={[value ? S.body : S.muted, { flex: 1 }]}>{value || placeholder}</Text><Icon name="chevron-down" size={19} color={C.muted} /></VoiceAction>
     <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}><View style={styles.languageBackdrop}><Pressable style={StyleSheet.absoluteFill} onPress={() => setOpen(false)} /><View style={styles.selectPopup}><View style={styles.rowBetween}><Text style={S.sectionTitle}>{label}</Text><Pressable onPress={() => { setOpen(false); setQuery(''); }} accessibilityLabel="Close picker"><Icon name="close" size={21} color={C.muted} /></Pressable></View><TextInput value={query} onChangeText={setQuery} placeholder={`Search or enter ${label.toLowerCase()}`} autoFocus style={styles.selectSearch} />
-      <ScrollView keyboardShouldPersistTaps="handled" style={{ maxHeight: 300 }}>{filtered.map(option => <Pressable key={option} onPress={() => select(option)} style={styles.selectOption}><Text style={S.body}>{option}</Text>{option === value ? <Icon name="check" color={C.green} /> : null}</Pressable>)}{query.trim() && !options.some(option => option.toLowerCase() === query.trim().toLowerCase()) ? <Pressable onPress={() => select(query.trim())} style={[styles.selectOption, styles.selectCustom]}><Icon name="plus-circle-outline" color={C.green} /><Text style={[S.body, { flex: 1 }]}>Use “{query.trim()}”</Text></Pressable> : null}{filtered.length === 0 && !query.trim() ? <Text style={[S.muted, { paddingVertical: 18, textAlign: 'center' }]}>Type to search or enter a place name.</Text> : null}</ScrollView>
+      <ScrollView keyboardShouldPersistTaps="handled" style={{ maxHeight: 300 }}>{filtered.map(option => <VoiceAction label={option} kind="select" accessibilityState={{ selected: option === value }} key={option} onPress={() => select(option)} style={styles.selectOption}><Text style={S.body}>{option}</Text>{option === value ? <Icon name="check" color={C.green} /> : null}</VoiceAction>)}{query.trim() && !options.some(option => option.toLowerCase() === query.trim().toLowerCase()) ? <VoiceAction label={query.trim()} kind="select" onPress={() => select(query.trim())} style={[styles.selectOption, styles.selectCustom]}><Icon name="plus-circle-outline" color={C.green} /><Text style={[S.body, { flex: 1 }]}>Use “{query.trim()}”</Text></VoiceAction> : null}{filtered.length === 0 && !query.trim() ? <Text style={[S.muted, { paddingVertical: 18, textAlign: 'center' }]}>Type to search or enter a place name.</Text> : null}</ScrollView>
     </View></View></Modal>
   </View>;
 }
@@ -243,8 +258,8 @@ function LanguageSelector() {
   const { language, setLanguage } = useLanguage();
   const [open, setOpen] = useState(false);
   const selected = languageOptions.find(option => option.id === language) ?? languageOptions[0];
-  return <><Pressable onPress={() => setOpen(true)} accessibilityRole="button" accessibilityLabel="Select language" style={styles.languageButton}><Icon name="translate" size={18} color={C.green} /><Text style={{ color: C.greenDark, fontSize: 13, fontWeight: '800' }}>{selected.label}  ⌄</Text></Pressable>
-    <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}><View style={styles.languageBackdrop}><Pressable style={StyleSheet.absoluteFill} onPress={() => setOpen(false)} /><View style={styles.languagePopup}><View style={styles.rowBetween}><Text style={S.sectionTitle}>Select language</Text><Pressable onPress={() => setOpen(false)} accessibilityLabel="Close language picker"><Icon name="close" size={21} color={C.muted} /></Pressable></View><Text style={[S.muted, { marginTop: 5, marginBottom: 12 }]}>Changing the language updates the app screens.</Text>{languageOptions.map(option => <Pressable key={option.id} onPress={() => { setLanguage(option.id); setOpen(false); }} style={[styles.languageOption, option.id === language && styles.languageOptionSelected]}><Text style={[styles.itemTitle, { fontSize: 15 }]}>{option.nativeName}</Text>{option.id === language ? <Icon name="check" size={19} color={C.green} /> : null}</Pressable>)}</View></View></Modal>
+  return <><VoiceAction label="Open language picker" aliases={['select language', 'change language']} onPress={() => setOpen(true)} accessibilityRole="button" accessibilityLabel="Select language" style={styles.languageButton}><Icon name="translate" size={18} color={C.green} /><Text style={{ color: C.greenDark, fontSize: 13, fontWeight: '800' }}>{selected.label}  ⌄</Text></VoiceAction>
+    <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}><View style={styles.languageBackdrop}><Pressable style={StyleSheet.absoluteFill} onPress={() => setOpen(false)} /><View style={styles.languagePopup}><View style={styles.rowBetween}><Text style={S.sectionTitle}>Select language</Text><Pressable onPress={() => setOpen(false)} accessibilityLabel="Close language picker"><Icon name="close" size={21} color={C.muted} /></Pressable></View><Text style={[S.muted, { marginTop: 5, marginBottom: 12 }]}>Changing the language updates the app screens.</Text>{languageOptions.map(option => <VoiceAction label={option.id} aliases={[option.nativeName]} kind="select" accessibilityState={{ selected: option.id === language }} key={option.id} onPress={() => { setLanguage(option.id); setOpen(false); }} style={[styles.languageOption, option.id === language && styles.languageOptionSelected]}><Text style={[styles.itemTitle, { fontSize: 15 }]}>{option.nativeName}</Text>{option.id === language ? <Icon name="check" size={19} color={C.green} /> : null}</VoiceAction>)}</View></View></Modal>
   </>;
 }
 
@@ -364,11 +379,12 @@ function MarketScreen({ go }: { go: (s: string) => void }) {
   const prices = data?.prices ?? marketPrices.map(item => ({ market: item.market, district: '', commodity: 'Paddy', variety: '', arrivalDate: 'Sample data', minPrice: item.price - 50, maxPrice: item.price + 50, modalPrice: item.price }));
   const best = [...prices].sort((a, b) => b.modalPrice - a.modalPrice)[0];
   return <View style={styles.stack}><Card><View style={styles.rowBetween}><View style={{ flex: 1 }}><Text style={S.sectionTitle}>Nearby markets</Text><Text style={S.muted}>Paddy · ₹ per quintal · {sampleMode ? 'sample prices' : 'AGMARKNET / data.gov.in'}</Text></View><Pressable onPress={() => void refresh()}><Text style={styles.link}>Refresh</Text></Pressable></View><View style={{ marginTop: 10 }}>{loading && !data ? <Text style={[S.muted, { marginVertical: 8 }]}>Checking current mandi prices…</Text> : null}{error ? <View style={{ backgroundColor: '#fff7e5', padding: 11, borderRadius: 12, marginVertical: 8 }}><Text style={{ color: C.ink, fontSize: 12 }}>{error} {sampleMode ? 'Showing sample prices until the data service is configured.' : ''}</Text></View> : null}{prices.length ? prices.map((item, i) => <View key={`${item.market}-${item.arrivalDate}`} style={styles.marketRow}><View style={styles.marketIcon}><Icon name="storefront-outline" size={18} color={C.green} /></View><View style={{ flex: 1 }}><Text style={styles.itemTitle}>{item.market}</Text><Text style={S.muted}>{item.district || (i === 0 ? 'Best price in sample' : 'Sample mandi')} · {item.arrivalDate || 'Date unavailable'}</Text></View><View style={{ alignItems: 'flex-end' }}><Text style={styles.marketPrice}>₹{item.modalPrice.toLocaleString('en-IN')}</Text><Text style={S.muted}>₹{item.minPrice.toLocaleString('en-IN')}–₹{item.maxPrice.toLocaleString('en-IN')}</Text></View></View>) : <Text style={S.muted}>No paddy listings were returned for this state.</Text>}</View></Card>
-    <Card><Text style={S.sectionTitle}>Market guidance</Text><View style={styles.recommendation}><Icon name="lightbulb-on-outline" color={C.green} /><View style={{ flex: 1 }}><Text style={styles.itemTitle}>{best ? `${best.market} · ₹${best.modalPrice.toLocaleString('en-IN')} / quintal` : 'No current price available'}</Text><Text style={S.muted}>{sampleMode ? 'Illustrative price only. Compare local transport and quality deductions before deciding where to sell.' : `Highest modal price in the returned listings. Compare transport costs and grain quality before choosing a mandi. ${best?.variety ? `Variety: ${best.variety}.` : ''}`}</Text></View></View><Text style={[S.muted, { marginTop: 13 }]}>Live mandi listings show daily minimum, maximum and modal wholesale prices. They do not include transport, fees or a guaranteed sale price.</Text></Card><Button title="Ask AI about selling" icon="robot-outline" onPress={() => go('assistant')} /></View>;
+    <Card><Text style={S.sectionTitle}>Market guidance</Text><View style={styles.recommendation}><Icon name="lightbulb-on-outline" color={C.green} /><View style={{ flex: 1 }}><Text style={styles.itemTitle}>{best ? `${best.market} · ₹${best.modalPrice.toLocaleString('en-IN')} / quintal` : 'No current price available'}</Text><Text style={S.muted}>{sampleMode ? 'Illustrative price only. Compare local transport and quality deductions before deciding where to sell.' : `Highest modal price in the returned listings. Compare transport costs and grain quality before choosing a mandi. ${best?.variety ? `Variety: ${best.variety}.` : ''}`}</Text></View></View><Text style={[S.muted, { marginTop: 13 }]}>Live mandi listings show daily minimum, maximum and modal wholesale prices. They do not include transport, fees or a guaranteed sale price.</Text></Card><Button title="Ask AI for my profit routes" icon="robot-outline" onPress={() => go('assistant?intent=profit')} /></View>;
 }
 
 function Schemes() {
   const { language } = useLanguage();
+  const [linkError, setLinkError] = useState(false);
   const [tab, setTab] = useState('For your farm');
   const [expanded, setExpanded] = useState('');
   const { data, loading, error, refresh } = useGovernmentSchemes();
@@ -383,9 +399,10 @@ function Schemes() {
       }
       await Linking.openURL(url);
     }
-    catch { Alert.alert('Unable to open link', 'Please try again or visit the official website shown on this card.'); }
+    catch { setLinkError(true); }
   };
   return <View style={styles.stack}><View style={styles.rowBetween}><View style={styles.segment}>{['For your farm', 'All schemes'].map(label => <Pressable key={label} onPress={() => setTab(label)} style={[styles.segmentItem, tab === label && styles.segmentActive]}><Text style={[styles.segmentText, tab === label && { color: C.greenDark }]}>{label === 'For your farm' && data ? `For your farm (${relevantSchemes.length})` : label === 'All schemes' && data ? `All schemes (${allSchemes.length})` : label}</Text></Pressable>)}</View><Pressable onPress={() => void refresh()}><Text style={styles.link}>Refresh</Text></Pressable></View>
+    <Modal visible={linkError} transparent animationType="fade" onRequestClose={() => setLinkError(false)}><View style={styles.languageBackdrop}><View style={styles.languagePopup}><Text style={S.sectionTitle}>Unable to open link</Text><Text style={S.body}>Please try again or visit the official website shown on this card.</Text><Button title="Close" onPress={() => setLinkError(false)} /></View></View></Modal>
     {loading && !data ? <Card><Text style={S.muted}>Loading official scheme information…</Text></Card> : null}
     {error ? <Card style={{ backgroundColor: '#fff7e5' }}><Text style={styles.itemTitle}>Could not refresh scheme information</Text><Text style={[S.muted, { marginTop: 5 }]}>{error}</Text></Card> : null}
     {visibleSchemes.map(scheme => <Card key={scheme.id}><View style={styles.rowBetween}><View style={styles.schemeIcon}><Text style={{ fontSize: 24 }}>{scheme.category === 'Crop insurance' ? '🌱' : scheme.category === 'Soil testing' ? '🧪' : '🌾'}</Text></View><View style={{ flex: 1, marginLeft: 12 }}><Text style={styles.itemTitle}>{scheme.name}</Text><Text style={S.muted}>{scheme.category}</Text></View><Tag>{scheme.relevant ? 'RELEVANT' : 'CHECK DETAILS'}</Tag></View><Text style={[S.body, { marginTop: 12 }]}>{scheme.summary}</Text><Text style={{ color: C.greenDark, fontSize: 14, fontWeight: '800', marginTop: 10 }}>{scheme.benefit}</Text><View style={{ marginTop: 11, backgroundColor: '#f7f9f4', padding: 12, borderRadius: 12 }}><Text style={styles.itemTitle}>Eligibility guidance</Text><Text style={[S.muted, { marginTop: 5 }]}>{scheme.eligibility}</Text></View>
@@ -422,7 +439,7 @@ function Community() {
   return <View style={styles.stack}><Card>
     <View style={styles.rowBetween}><View style={styles.segment}>{['Discussions', 'Experts'].map(t => <Pressable key={t} onPress={() => setTab(t)} style={[styles.segmentItem, tab === t && styles.segmentActive]}><Text style={[styles.segmentText, tab === t && { color: C.greenDark }]}>{t}</Text></Pressable>)}</View><Tag>{tab.toUpperCase()}</Tag></View>
     {tab === 'Discussions' ? <>
-      <View style={styles.askRow}><TextInput value={draft} onChangeText={setDraft} placeholder="Ask your farming community..." style={styles.askInput} /><Pressable accessibilityLabel="Post question" onPress={() => { if (draft.trim()) { setPosts([{ id: `post-${Date.now()}`, name: profile.name, time: 'Just now', title: draft.trim(), body: 'Your question has been shared with the farming community.', likes: 0, replies: [], initials }, ...posts]); setDraft(''); } }} style={styles.sendButton}><Icon name="send" color={C.white} size={18} /></Pressable></View>
+      <View style={styles.askRow}><TextInput value={draft} onChangeText={setDraft} placeholder="Ask your farming community..." style={styles.askInput} /><VoiceAction label="Post question" kind="submit" confirm preview={draft} disabled={!draft.trim()} accessibilityLabel="Post question" onPress={() => { if (draft.trim()) { setPosts([{ id: `post-${Date.now()}`, name: profile.name, time: 'Just now', title: draft.trim(), body: 'Your question has been shared with the farming community.', likes: 0, replies: [], initials }, ...posts]); setDraft(''); } }} style={styles.sendButton}><Icon name="send" color={C.white} size={18} /></VoiceAction></View>
       {posts.map(post => {
         const isExpanded = Boolean(expandedPosts[post.id]);
         const isLiked = Boolean(likedPosts[post.id]);
@@ -435,7 +452,7 @@ function Community() {
           </View>
           {isExpanded ? <View style={{ marginTop: 10, marginLeft: 3, paddingLeft: 12, borderLeftWidth: 2, borderLeftColor: C.greenSoft }}>
             {post.replies.length ? post.replies.map((reply, index) => <View key={`${post.id}-reply-${index}`} style={{ marginBottom: 9 }}><Text style={[styles.itemTitle, { fontSize: 13 }]}>{reply.name}</Text><Text style={[S.body, { fontSize: 13, marginTop: 2 }]}>{reply.body}</Text></View>) : <Text style={S.muted}>No replies yet. Be the first to reply.</Text>}
-            <View style={[styles.askRow, { marginTop: 4, marginBottom: 0 }]}><TextInput value={replyDrafts[post.id] || ''} onChangeText={value => setReplyDrafts(current => ({ ...current, [post.id]: value }))} placeholder="Write a reply..." style={styles.askInput} /><Pressable accessibilityLabel="Send reply" onPress={() => { const reply = replyDrafts[post.id]?.trim(); if (reply) { setPosts(current => current.map(item => item.id === post.id ? { ...item, replies: [...item.replies, { name: profile.name, body: reply }] } : item)); setReplyDrafts(current => ({ ...current, [post.id]: '' })); } }} style={[styles.sendButton, { width: 38, height: 38 }]}><Icon name="send" color={C.white} size={15} /></Pressable></View>
+            <View style={[styles.askRow, { marginTop: 4, marginBottom: 0 }]}><TextInput value={replyDrafts[post.id] || ''} onChangeText={value => setReplyDrafts(current => ({ ...current, [post.id]: value }))} placeholder="Write a reply..." style={styles.askInput} /><VoiceAction label={`Send reply to ${post.title}`} kind="submit" confirm preview={replyDrafts[post.id]} disabled={!replyDrafts[post.id]?.trim()} accessibilityLabel="Send reply" onPress={() => { const reply = replyDrafts[post.id]?.trim(); if (reply) { setPosts(current => current.map(item => item.id === post.id ? { ...item, replies: [...item.replies, { name: profile.name, body: reply }] } : item)); setReplyDrafts(current => ({ ...current, [post.id]: '' })); } }} style={[styles.sendButton, { width: 38, height: 38 }]}><Icon name="send" color={C.white} size={15} /></VoiceAction></View>
           </View> : null}
         </View></View>;
       })}
@@ -444,7 +461,7 @@ function Community() {
       {communityExperts.map(expert => <View key={expert.id} style={[styles.discussion, { alignItems: 'center' }]}>
         <View style={[styles.discussionAvatar, { width: 46, height: 46, borderRadius: 24 }]}><Text style={{ color: C.greenDark, fontWeight: '800' }}>{expert.initials}</Text></View>
         <View style={{ flex: 1 }}><View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}><Text style={styles.itemTitle}>{expert.name}</Text><Text style={{ color: '#b77912', fontSize: 13, fontWeight: '800' }}>★ {expert.rating}</Text></View><Text style={S.muted}>{expert.specialty}</Text><Text style={[S.muted, { fontSize: 12 }]}>{expert.location} · {expert.reviews} farmer reviews</Text></View>
-        <Button title={requestedExperts[expert.id] ? 'Requested' : 'Connect'} secondary={!requestedExperts[expert.id]} onPress={() => setRequestedExperts(current => ({ ...current, [expert.id]: !current[expert.id] }))} />
+        <Button voiceLabel={`${requestedExperts[expert.id] ? 'Cancel connection request to' : 'Connect with'} ${expert.name}`} voiceKind="submit" title={requestedExperts[expert.id] ? 'Requested' : 'Connect'} secondary={!requestedExperts[expert.id]} onPress={() => setRequestedExperts(current => ({ ...current, [expert.id]: !current[expert.id] }))} />
       </View>)}
     </View>}
   </Card></View>;
@@ -472,27 +489,28 @@ function Closing({ go }: { go: (s: string) => void }) {
 }
 
 const styles = StyleSheet.create({
+  bottomIcon: { width: 48, height: 33, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
   root: { flex: 1, flexDirection: 'row', backgroundColor: C.cream }, main: { flex: 1, minWidth: 0 },
-  profileInput: { flex: 1, minHeight: 36, paddingVertical: 5, color: C.ink, fontSize: 13, outlineStyle: 'none' as any },
+  profileInput: { flex: 1, minHeight: 44, paddingVertical: 9, color: C.ink, fontSize: 15, outlineStyle: 'none' as any },
   formError: { color: C.red, backgroundColor: C.redSoft, borderRadius: 11, paddingHorizontal: 12, paddingVertical: 9, fontSize: 12, lineHeight: 17 },
-  selectField: { minHeight: 45, flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 11, borderWidth: 1, borderColor: C.border, backgroundColor: '#fbfcf9', paddingHorizontal: 11 },
+  selectField: { minHeight: 50, flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 11, borderWidth: 1, borderColor: C.border, backgroundColor: '#fbfcf9', paddingHorizontal: 11 },
   selectPopup: { width: '100%', maxWidth: 500, alignSelf: 'center', backgroundColor: C.white, borderRadius: 22, padding: 20, marginBottom: 8, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 18, shadowOffset: { width: 0, height: -4 }, elevation: 12 },
   selectSearch: { minHeight: 45, marginVertical: 14, borderWidth: 1, borderColor: C.border, borderRadius: 12, paddingHorizontal: 12, color: C.ink, outlineStyle: 'none' as any },
   selectOption: { minHeight: 46, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, paddingHorizontal: 10, borderBottomWidth: 1, borderBottomColor: '#edf0ea' }, selectCustom: { backgroundColor: C.greenSoft, borderRadius: 11, marginTop: 6 },
   mapPickerBackdrop: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#0007', padding: 12 },
   mapPickerPopup: { width: '100%', maxWidth: 760, maxHeight: '95%', backgroundColor: C.white, borderRadius: 22, padding: 16, gap: 13, elevation: 14 },
-  languageButton: { minHeight: 40, flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderColor: '#cfe2d1', borderRadius: 12, backgroundColor: C.white, paddingHorizontal: 13 },
+  languageButton: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderColor: '#cfe2d1', borderRadius: 12, backgroundColor: C.white, paddingHorizontal: 13 },
   languageBackdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: '#0006', padding: 12 },
   languagePopup: { width: '100%', maxWidth: 480, alignSelf: 'center', backgroundColor: C.white, borderRadius: 22, padding: 20, marginBottom: 8, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 18, shadowOffset: { width: 0, height: -4 }, elevation: 12 },
   languageOption: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 48, paddingHorizontal: 11, borderBottomWidth: 1, borderBottomColor: '#edf0ea' }, languageOptionSelected: { backgroundColor: C.greenSoft, borderRadius: 11 },
   sidebar: { width: 250, height: '100%', flexShrink: 0, backgroundColor: '#173b2b', paddingHorizontal: 16, paddingTop: 22, paddingBottom: 20 }, sidebarMenu: { flex: 1, minHeight: 0 }, sidebarMenuContent: { paddingBottom: 8 },
   brand: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 34, paddingHorizontal: 4 }, brandMark: { width: 40, height: 40, borderRadius: 13, backgroundColor: C.green, justifyContent: 'center', alignItems: 'center' }, brandName: { color: C.white, fontSize: 17, fontWeight: '900' }, brandSub: { color: '#a8c4ac', fontSize: 9, letterSpacing: 1.2, marginTop: 2 }, sideLabel: { color: '#87a48d', fontSize: 10, fontWeight: '800', letterSpacing: 1.2, marginHorizontal: 10, marginBottom: 9 },
-  sideLink: { minHeight: 43, borderRadius: 12, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 11, gap: 11, marginBottom: 4 }, sideLinkActive: { backgroundColor: '#2b6844' }, sideLinkText: { color: '#d5e0d5', fontSize: 13, flex: 1 }, sideBadge: { backgroundColor: '#b75b45', width: 19, height: 19, borderRadius: 10, alignItems: 'center', justifyContent: 'center' }, sidebarBottom: { marginTop: 'auto', padding: 13, backgroundColor: '#204b35', borderRadius: 14 },
-  topbar: { height: 65, backgroundColor: C.white, borderBottomWidth: 1, borderBottomColor: C.border, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 22, gap: 12 }, crumb: { color: C.muted, fontSize: 10, fontWeight: '800', letterSpacing: 1 }, brandMarkSmall: { width: 33, height: 33, borderRadius: 11, backgroundColor: C.green, alignItems: 'center', justifyContent: 'center' }, brandMobile: { color: C.ink, fontSize: 16, fontWeight: '900' }, bell: { width: 38, height: 38, backgroundColor: '#f5f7f2', borderRadius: 12, alignItems: 'center', justifyContent: 'center' }, bellDot: { position: 'absolute', top: 8, right: 8, width: 7, height: 7, backgroundColor: C.red, borderRadius: 5 }, avatar: { width: 35, height: 35, borderRadius: 20, backgroundColor: C.greenSoft, alignItems: 'center', justifyContent: 'center' }, desktopContent: { paddingTop: 27 }, onboardContent: { flexGrow: 1, justifyContent: 'center', maxWidth: 940 }, pageHeading: { flexDirection: 'row', alignItems: 'center', marginBottom: 21, gap: 12 }, screenBody: { gap: 16 }, disclaimer: { color: '#8a9388', fontSize: 10, textAlign: 'center', marginTop: 24, paddingHorizontal: 10 },
-  stack: { gap: 15 }, rowWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 14 }, rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }, statsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 }, cardEyebrow: { color: C.muted, fontSize: 11, fontWeight: '700' }, link: { color: C.green, fontWeight: '800', fontSize: 12 },
-  welcomeCard: { backgroundColor: C.greenDark, borderColor: C.greenDark, flexDirection: 'row', alignItems: 'center', overflow: 'hidden' }, weatherCard: { minWidth: 270 }, tempRow: { flexDirection: 'row', alignItems: 'center', gap: 11, marginVertical: 13 }, temp: { color: C.ink, fontSize: 37, fontWeight: '900' }, healthLine: { flexDirection: 'row', alignItems: 'center', marginVertical: 14 }, healthScore: { fontSize: 37, fontWeight: '900', color: C.green }, taskPreview: { flexDirection: 'row', alignItems: 'center', gap: 11, marginTop: 15 }, taskBullet: { width: 10, height: 10, backgroundColor: C.gold, borderRadius: 7 }, itemTitle: { color: C.ink, fontSize: 13, fontWeight: '800' }, schemeStrip: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 15 }, schemeMini: { flexDirection: 'row', alignItems: 'center', gap: 9, flex: 1, minWidth: 220, backgroundColor: '#f8faf6', borderRadius: 13, padding: 11 },
-  bottomNav: { minHeight: 64, backgroundColor: C.white, borderTopWidth: 1, borderTopColor: C.border, flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', paddingBottom: 3 }, bottomItem: { minWidth: 54, alignItems: 'center', justifyContent: 'center', gap: 3, paddingHorizontal: 3 }, bottomText: { fontSize: 10, color: C.muted },
-  splash: { alignItems: 'center', justifyContent: 'center', paddingVertical: 25 }, splashLogo: { width: 72, height: 72, borderRadius: 24, backgroundColor: C.greenSoft, alignItems: 'center', justifyContent: 'center' }, splashBrand: { color: C.ink, fontSize: 28, fontWeight: '900', marginTop: 14 }, splashTagline: { color: C.muted, fontSize: 15, marginTop: 5 }, heroPhoto: { height: 310, width: '100%', maxWidth: 470, marginTop: 22, borderRadius: 24, justifyContent: 'flex-end', overflow: 'hidden' }, heroPhotoCaption: { backgroundColor: 'rgba(19, 57, 38, 0.82)', paddingHorizontal: 17, paddingVertical: 14, margin: 10, borderRadius: 15 }, heroCaptionTitle: { color: C.white, fontSize: 17, fontWeight: '900' }, heroCaptionBody: { color: '#e0eddf', fontSize: 12, marginTop: 4 }, farmerHeroPortrait: { width: 78, height: 112, borderRadius: 15, borderWidth: 1, borderColor: '#ffffff70' }, splashPerks: { width: '100%', maxWidth: 360, flexDirection: 'row', justifyContent: 'space-around', marginTop: 15 }, perk: { color: C.greenDark, fontWeight: '700', fontSize: 11 }, onboardWrap: { width: '100%', alignItems: 'center', justifyContent: 'center', paddingVertical: 15 }, onboardIcon: { width: 58, height: 58, borderRadius: 20, backgroundColor: C.greenSoft, alignItems: 'center', justifyContent: 'center', marginBottom: 13 }, inputLabel: { color: C.muted, fontSize: 11, fontWeight: '700', marginBottom: 6 }, phoneInput: { height: 47, borderColor: C.border, borderWidth: 1, borderRadius: 12, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, gap: 12 }, input: { flex: 1, outlineStyle: 'none' as any }, field: { minHeight: 43, borderRadius: 11, borderWidth: 1, borderColor: C.border, backgroundColor: '#fbfcf9', justifyContent: 'center', paddingHorizontal: 11 }, locationCard: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#f6faf4', padding: 11 },
+  sideLink: { minHeight: 48, borderRadius: 12, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 11, gap: 11, marginBottom: 4 }, sideLinkActive: { backgroundColor: '#2b6844' }, sideLinkText: { color: '#d5e0d5', fontSize: 13, flex: 1 }, sideBadge: { backgroundColor: '#b75b45', width: 19, height: 19, borderRadius: 10, alignItems: 'center', justifyContent: 'center' }, sidebarBottom: { marginTop: 'auto', padding: 13, backgroundColor: '#204b35', borderRadius: 14 },
+  topbar: { height: 65, backgroundColor: C.white, borderBottomWidth: 1, borderBottomColor: C.border, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 22, gap: 12 }, crumb: { color: C.muted, fontSize: 10, fontWeight: '800', letterSpacing: 1 }, brandMarkSmall: { width: 33, height: 33, borderRadius: 11, backgroundColor: C.green, alignItems: 'center', justifyContent: 'center' }, brandMobile: { color: C.ink, fontSize: 16, fontWeight: '900' }, bell: { width: 44, height: 44, backgroundColor: '#f5f7f2', borderRadius: 12, alignItems: 'center', justifyContent: 'center' }, bellDot: { position: 'absolute', top: 8, right: 8, width: 7, height: 7, backgroundColor: C.red, borderRadius: 5 }, avatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: C.greenSoft, alignItems: 'center', justifyContent: 'center' }, desktopContent: { paddingTop: 27 }, onboardContent: { flexGrow: 1, justifyContent: 'center', maxWidth: 940 }, pageHeading: { flexDirection: 'row', alignItems: 'center', marginBottom: 21, gap: 12 }, screenBody: { gap: 16 }, disclaimer: { color: '#8a9388', fontSize: 10, textAlign: 'center', marginTop: 24, paddingHorizontal: 10 },
+  stack: { gap: 16 }, rowWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 14 }, rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }, statsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 }, cardEyebrow: { color: C.muted, fontSize: 11, fontWeight: '700' }, link: { color: C.green, fontWeight: '800', fontSize: 12 },
+  welcomeCard: { backgroundColor: C.greenDark, borderColor: C.greenDark, flexDirection: 'row', alignItems: 'center', overflow: 'hidden' }, weatherCard: { minWidth: 250 }, tempRow: { flexDirection: 'row', alignItems: 'center', gap: 11, marginVertical: 13 }, temp: { color: C.ink, fontSize: 37, fontWeight: '900' }, healthLine: { flexDirection: 'row', alignItems: 'center', marginVertical: 14 }, healthScore: { fontSize: 37, fontWeight: '900', color: C.green }, taskPreview: { flexDirection: 'row', alignItems: 'center', gap: 11, marginTop: 15 }, taskBullet: { width: 10, height: 10, backgroundColor: C.gold, borderRadius: 7 }, itemTitle: { color: C.ink, fontSize: 14, fontWeight: '800' }, schemeStrip: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 15 }, schemeMini: { flexDirection: 'row', alignItems: 'center', gap: 9, flex: 1, minWidth: 220, backgroundColor: '#f8faf6', borderRadius: 13, padding: 11 },
+  bottomNav: { minHeight: 68, paddingTop: 5, backgroundColor: C.white, borderTopWidth: 1, borderTopColor: C.border, flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', paddingBottom: 3 }, bottomItem: { minWidth: 54, alignItems: 'center', justifyContent: 'center', gap: 3, paddingHorizontal: 3 }, bottomText: { fontSize: 11, color: C.muted },
+  splash: { alignItems: 'center', justifyContent: 'center', paddingVertical: 25 }, splashLogo: { width: 72, height: 72, borderRadius: 24, backgroundColor: C.greenSoft, alignItems: 'center', justifyContent: 'center' }, splashBrand: { color: C.ink, fontSize: 28, fontWeight: '900', marginTop: 14 }, splashTagline: { color: C.muted, fontSize: 15, marginTop: 5 }, heroPhoto: { height: 310, width: '100%', maxWidth: 470, marginTop: 22, borderRadius: 24, justifyContent: 'flex-end', overflow: 'hidden' }, heroPhotoCaption: { backgroundColor: 'rgba(19, 57, 38, 0.82)', paddingHorizontal: 17, paddingVertical: 14, margin: 10, borderRadius: 15 }, heroCaptionTitle: { color: C.white, fontSize: 17, fontWeight: '900' }, heroCaptionBody: { color: '#e0eddf', fontSize: 12, marginTop: 4 }, farmerHeroPortrait: { width: 78, height: 112, borderRadius: 15, borderWidth: 1, borderColor: '#ffffff70' }, splashPerks: { width: '100%', maxWidth: 360, flexDirection: 'row', justifyContent: 'space-around', marginTop: 15 }, perk: { color: C.greenDark, fontWeight: '700', fontSize: 11 }, onboardWrap: { width: '100%', alignItems: 'center', justifyContent: 'center', paddingVertical: 15 }, onboardIcon: { width: 58, height: 58, borderRadius: 20, backgroundColor: C.greenSoft, alignItems: 'center', justifyContent: 'center', marginBottom: 13 }, inputLabel: { color: C.muted, fontSize: 12, fontWeight: '700', marginBottom: 6 }, phoneInput: { minHeight: 52, borderColor: C.border, borderWidth: 1, borderRadius: 12, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, gap: 12 }, input: { flex: 1, outlineStyle: 'none' as any }, field: { minHeight: 50, borderRadius: 14, borderWidth: 1, borderColor: C.border, backgroundColor: '#fbfcf9', justifyContent: 'center', paddingHorizontal: 11 }, locationCard: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#f6faf4', padding: 11 },
   otpBackdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: '#0006', padding: 12 }, otpPopup: { width: '100%', maxWidth: 500, alignSelf: 'center', backgroundColor: C.white, borderRadius: 22, padding: 20, marginBottom: 8, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 18, shadowOffset: { width: 0, height: -4 }, elevation: 12 }, verificationMessage: { flexDirection: 'row', alignItems: 'center', gap: 9, backgroundColor: '#f0f6ed', padding: 13, borderRadius: 13, marginVertical: 15 }, verificationMessageText: { color: C.ink, fontSize: 13, flex: 1 }, otpInput: { height: 49, borderWidth: 1, borderColor: C.border, borderRadius: 12, paddingHorizontal: 14, textAlign: 'center', letterSpacing: 8, fontSize: 20, fontWeight: '800', color: C.ink }, authError: { color: C.red, fontSize: 12, marginTop: 7 },
   segment: { flexDirection: 'row', backgroundColor: '#f0f3ed', padding: 3, borderRadius: 11, alignSelf: 'flex-start' }, segmentItem: { paddingHorizontal: 13, paddingVertical: 8, borderRadius: 9 }, segmentActive: { backgroundColor: C.white, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 4, elevation: 2 }, segmentText: { color: C.muted, fontSize: 12, fontWeight: '700' }, priorityHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 }, taskRow: { flexDirection: 'row', alignItems: 'center', gap: 11, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#edf0ea' },
   leafPhoto: { width: '100%', height: 220, borderRadius: 16 }, adviceBox: { backgroundColor: '#f5f8f2', padding: 13, borderRadius: 13, marginTop: 12 },

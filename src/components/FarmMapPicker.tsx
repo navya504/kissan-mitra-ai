@@ -1,3 +1,4 @@
+import { VoiceAction } from '../voice-command-context';
 import { useMemo, useState } from 'react';
 import { Image, PanResponder, Pressable, StyleSheet, View } from 'react-native';
 import { C, Icon } from '../ui';
@@ -99,7 +100,7 @@ export function FarmMapPicker({ initialLatitude, initialLongitude, state, onSele
       </View>
       <Text style={styles.attribution}>© OpenStreetMap contributors</Text>
     </View>
-    <View style={styles.coordinates}><Icon name="crosshairs-gps" size={16} color={C.green} /><Text style={styles.coordinateText}>{selected.latitude.toFixed(5)}, {selected.longitude.toFixed(5)}</Text><View style={{ flex: 1 }} /><Pressable onPress={() => onSelect(selected)} accessibilityRole="button" style={styles.useButton}><Text style={styles.useButtonText}>Use this pin</Text></Pressable></View>
+    <View style={styles.coordinates}><Icon name="crosshairs-gps" size={16} color={C.green} /><Text style={styles.coordinateText}>{selected.latitude.toFixed(5)}, {selected.longitude.toFixed(5)}</Text><View style={{ flex: 1 }} /><VoiceAction label="Use this pin" kind="submit" preview={`${selected.latitude.toFixed(6)}, ${selected.longitude.toFixed(6)}`} onPress={() => onSelect(selected)} accessibilityRole="button" style={styles.useButton}><Text style={styles.useButtonText}>Use this pin</Text></VoiceAction></View>
   </View>;
 }
 

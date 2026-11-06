@@ -1,3 +1,4 @@
+import { VoiceAction } from '../voice-command-context';
 import { useEffect, useRef, useState } from 'react';
 import { Linking, Pressable, StyleSheet, View } from 'react-native';
 import { FarmMapPicker } from './FarmMapPicker';
@@ -61,7 +62,7 @@ export function FarmLocationPicker({ state, initialLatitude, initialLongitude, a
   return <View style={{ gap: 9 }}>
     <Text style={styles.instruction}>Drag the pin or tap the map to move it. The outlined square is estimated from this pin and your farm area ({area || 'area not set'}); adjust the farm size in your profile if it is wrong.</Text>
     <div ref={mapElement} style={{ height: 330, width: '100%', borderRadius: 15, overflow: 'hidden', background: '#e7ece3' }} />
-    <View style={styles.coordinates}><Icon name="crosshairs-gps" size={16} color={C.green} /><Text style={styles.coordinateText}>{selected.latitude.toFixed(6)}, {selected.longitude.toFixed(6)}</Text><View style={{ flex: 1 }} /><Pressable disabled={!loaded} onPress={() => onSelect(selected)} accessibilityRole="button" style={[styles.useButton, !loaded && { opacity: 0.55 }]}><Text style={styles.useButtonText}>Use this pin</Text></Pressable></View>
+    <View style={styles.coordinates}><Icon name="crosshairs-gps" size={16} color={C.green} /><Text style={styles.coordinateText}>{selected.latitude.toFixed(6)}, {selected.longitude.toFixed(6)}</Text><View style={{ flex: 1 }} /><VoiceAction label="Use this pin" kind="submit" preview={`${selected.latitude.toFixed(6)}, ${selected.longitude.toFixed(6)}`} disabled={!loaded} onPress={() => onSelect(selected)} accessibilityRole="button" style={[styles.useButton, !loaded && { opacity: 0.55 }]}><Text style={styles.useButtonText}>Use this pin</Text></VoiceAction></View>
   </View>;
 }
 

@@ -1,5 +1,9 @@
 import { createContext, type ReactNode, useContext, useMemo, useState } from 'react';
-import { Text as NativeText, TextInput as NativeTextInput, type TextInputProps, type TextProps } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text as NativeText, TextInput as NativeTextInput, View, type TextInputProps, type TextProps } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { DictationSession, useSpeechAccess } from './speech-access';
+import { appSpeechLanguages, dialogText, dictatedValue } from './speech-text';
+import { useVoiceCommands } from './voice-command-context';
 
 export const languageOptions = [
   { id: 'English', label: 'English', nativeName: 'English' },
@@ -227,15 +231,45 @@ export function translateText(value: string, language: AppLanguage) {
   return value.replace(pattern, match => map[match] ?? map[keys.find(key => key.toLowerCase() === match.toLowerCase()) ?? ''] ?? match);
 }
 
-export function LocalizedText({ children, ...props }: TextProps) {
+export function LocalizedText({ children, onLongPress, ...props }: TextProps) {
   const { language } = useLanguage();
+  const speech = useSpeechAccess();
   const localized = Array.isArray(children)
     ? children.map(child => typeof child === 'string' ? translateText(child, language) : child)
     : typeof children === 'string' ? translateText(children, language) : children;
-  return <NativeText {...props}>{localized}</NativeText>;
+  const read = () => speech?.read(dialogText(localized), appSpeechLanguages[language]);
+  // RN Web Text does not implement onLongPress; context-menu supports mouse and touch holds.
+  const webSpeech = Platform.OS === 'web' && speech ? { onContextMenu: (event: { preventDefault: () => void; stopPropagation: () => void }) => {
+    event.preventDefault(); event.stopPropagation(); read();
+  } } : {};
+  return <NativeText {...props} {...webSpeech} onLongPress={onLongPress ?? (speech ? event => { event.stopPropagation(); read(); } : undefined)}>{localized}</NativeText>;
 }
 
-export function LocalizedTextInput({ placeholder, ...props }: TextInputProps) {
+export function LocalizedTextInput({ placeholder, style, ...props }: TextInputProps) {
   const { language } = useLanguage();
-  return <NativeTextInput {...props} placeholder={placeholder ? translateText(placeholder, language) : placeholder} />;
+  const speech = useSpeechAccess();
+  const [dictating, setDictating] = useState(false);
+  const [focused, setFocused] = useState(false);
+  const commands = useVoiceCommands();
+  const changeText = (text: string) => { commands?.invalidateConfirmation(); props.onChangeText?.(text); };
+  const localizedPlaceholder = placeholder ? translateText(placeholder, language) : placeholder;
+  // Keep disabled/read-only/password inputs unchanged.
+  if (!speech || props.editable === false || props.readOnly || props.secureTextEntry || !props.onChangeText) {
+    return <NativeTextInput {...props} onChangeText={props.onChangeText ? changeText : undefined} style={style} placeholder={localizedPlaceholder} />;
+  }
+  const layout = StyleSheet.flatten(style) ?? {};
+  return <View style={{ flex: layout.flex, flexGrow: layout.flexGrow, flexShrink: layout.flexShrink, width: layout.width ?? (layout.flex ? undefined : '100%'), alignSelf: layout.alignSelf, minWidth: 0 }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+      <NativeTextInput {...props} onChangeText={changeText} editable={!dictating} onFocus={event => { setFocused(true); props.onFocus?.(event); }} onBlur={event => { setFocused(false); props.onBlur?.(event); }} style={[style, { flex: 1, width: undefined, minWidth: 0 }, focused && { borderColor: '#246b47', backgroundColor: '#ffffff' }]} placeholder={localizedPlaceholder} />
+      <Pressable accessibilityRole="button" accessibilityLabel={`Speak ${props.accessibilityLabel || placeholder || 'this field'}`} disabled={dictating || speech.dictating}
+        accessibilityState={{ disabled: dictating || speech.dictating }} onPress={() => setDictating(true)} style={{ minWidth: 44, minHeight: 44, marginLeft: 6, borderRadius: 13, backgroundColor: '#eaf2e8', alignItems: 'center', justifyContent: 'center', opacity: speech.dictating ? 0.5 : 1 }}>
+        <MaterialCommunityIcons name="microphone" size={21} color="#247447" />
+      </Pressable>
+    </View>
+    {dictating ? <DictationSession language={appSpeechLanguages[language]} onClose={() => setDictating(false)} onText={text => {
+      const value = dictatedValue(text, props.keyboardType, props.maxLength);
+      if (!value) throw new Error('No number was recognized. Please say the digits clearly or type them.');
+      changeText(value);
+    }} /> : null}
+  </View>;
 }

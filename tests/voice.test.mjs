@@ -158,3 +158,22 @@ test('dictated numeric fields normalize Indic digits and retain input limits', (
   assert.equal(dictatedValue('  My village  ', 'default'), 'My village');
   assert.equal(dictatedValue('no digits', 'number-pad'), '');
 });
+
+test('Telugu and English spoken digits can fill mobile numbers and verification codes', () => {
+  const { dictatedValue } = load('../src/speech-text.ts');
+  assert.equal(dictatedValue('తొమ్మిది ఎనిమిది ఏడు ఆరు ఐదు నాలుగు మూడు రెండు ఒకటి సున్నా', 'number-pad', 10), '9876543210');
+  assert.equal(dictatedValue('ఒకటి, రెండు, మూడు, నాలుగు, ఐదు, ఆరు.', 'number-pad', 6), '123456');
+  assert.equal(dictatedValue('nine eight seven six five four three two one zero', 'phone-pad', 10), '9876543210');
+  assert.equal(dictatedValue('౯ eight ౭ ఆరు 5', 'number-pad'), '98765');
+  assert.equal(dictatedValue('one two three four five six seven', 'number-pad', 6), '123456');
+});
+
+test('spoken decimal values work without rewriting free-text names or places', () => {
+  const { dictatedValue, numericSpeechText } = load('../src/speech-text.ts');
+  assert.equal(dictatedValue('రెండు పాయింట్ ఐదు', 'decimal-pad'), '2.5');
+  assert.equal(dictatedValue('two point five', 'decimal-pad'), '2.5');
+  assert.equal(numericSpeechText('రెండు పాయింట్ ఐదు ఎకరాలు'), '2.5 ఎకరాలు');
+  assert.equal(dictatedValue('One Tree Village'), 'One Tree Village');
+  assert.equal(dictatedValue('రెండు చెట్లు'), 'రెండు చెట్లు');
+  assert.equal(dictatedValue('Someone'), 'Someone');
+});

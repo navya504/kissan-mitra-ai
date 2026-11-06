@@ -2,6 +2,8 @@
 
 Kisaan Mitra AI is a mobile-first farming companion for web, Android, and iOS. It is built with Expo, Expo Router, React Native, TypeScript, and a small Node.js API. The browser tab title and app name are **Kisaan Mitra AI**.
 
+See the [application architecture PDF](docs/Kisaan-Mitra-AI-Architecture.pdf) for the system diagram, request flows, API boundaries, and the future Authentication and Unnamed storage components.
+
 ## Features
 
 | Area | Current behavior |

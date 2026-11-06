@@ -17,6 +17,14 @@ const states = ['Andhra Pradesh', 'Telangana', 'Karnataka', 'Tamil Nadu', 'Mahar
 const empty = () => ({ name: '', state: '', district: '', village: '', crop: '', area: '', location: '', latitude: '', longitude: '' });
 const full = () => ({ name: 'Ramesh Kumar', state: 'Andhra Pradesh', district: 'Anakapalli', village: 'Anakapalle', crop: 'Paddy', area: '2 acres', location: 'Anakapalle, Andhra Pradesh', latitude: '17.69', longitude: '83.00' });
 
+test('Telugu spoken farm areas preserve the quantity and units', () => {
+  assert.equal(registrationValue('area', 'రెండు ఎకరాలు', states).value, '2 acres');
+  assert.equal(registrationValue('area', 'రెండు పాయింట్ ఐదు ఎకరాలు', states).value, '2.5 acres');
+  assert.equal(registrationValue('area', 'ఒకటి హెక్టారు', states).value, '1 hectares');
+  assert.equal(registrationValue('area', 'సున్నా ఎకరాలు', states).value, undefined);
+  assert.equal(registrationValue('area', 'పదిహేను ఎకరాలు', states).value, undefined);
+});
+
 test('guided registration asks each question, requires the map, then accepts explicit confirmation', () => {
   let current = { profile: empty(), session: { step: 'name' } };
   const replies = ['My name is Ramesh Kumar', 'Andhra Pradesh', 'Anakapalli', 'Anakapalle', 'Paddy', 'two acres'];

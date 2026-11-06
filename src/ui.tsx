@@ -1,10 +1,12 @@
 import { ReactNode } from 'react';
 import { Pressable, StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { LocalizedText as Text } from './i18n';
+import { LocalizedText as Text, translateText, useLanguage } from './i18n';
+import { useVoiceAction } from './voice-command-context';
+import { inferCommandKind } from './voice-command-engine';
 
 export const C = {
-  ink: '#1f3328', muted: '#738074', green: '#247447', greenDark: '#155936',
+  ink: '#1f3328', muted: '#627266', green: '#247447', greenDark: '#155936',
   greenSoft: '#e7f2e9', lime: '#dcebc8', cream: '#f7f7f0', white: '#ffffff',
   border: '#e5e9df', gold: '#dfaa3d', red: '#c44e42', redSoft: '#fff0ec',
   blue: '#5085a3', blueSoft: '#eaf3f7', orange: '#d07b34',
@@ -13,23 +15,26 @@ export const C = {
 export const S = StyleSheet.create({
   page: { flex: 1, backgroundColor: C.cream },
   content: { width: '100%', maxWidth: 1120, alignSelf: 'center', paddingHorizontal: 22, paddingTop: 22, paddingBottom: 36 },
-  title: { color: C.ink, fontSize: 27, fontWeight: '800', letterSpacing: -0.5 },
-  subtitle: { color: C.muted, fontSize: 14, marginTop: 5 },
+  title: { color: C.ink, fontSize: 27, lineHeight: 35, fontWeight: '800', letterSpacing: -0.5 },
+  subtitle: { color: C.muted, fontSize: 14, lineHeight: 21, marginTop: 5 },
   card: { backgroundColor: C.white, borderColor: C.border, borderWidth: 1, borderRadius: 20, padding: 18 },
-  sectionTitle: { color: C.ink, fontSize: 17, fontWeight: '800' },
-  body: { color: C.ink, fontSize: 14, lineHeight: 21 },
-  muted: { color: C.muted, fontSize: 12, lineHeight: 18 },
+  sectionTitle: { color: C.ink, fontSize: 17, lineHeight: 24, fontWeight: '800' },
+  body: { color: C.ink, fontSize: 14, lineHeight: 22 },
+  muted: { color: C.muted, fontSize: 12, lineHeight: 19 },
 });
 
 export function Icon({ name, size = 20, color = C.green }: { name: any; size?: number; color?: string }) {
   return <MaterialCommunityIcons name={name} size={size} color={color} />;
 }
 
-export function Button({ title, onPress, secondary = false, icon, style }: {
-  title: string; onPress: () => void; secondary?: boolean; icon?: any; style?: ViewStyle;
+export function Button({ title, onPress, secondary = false, icon, style, disabled = false, voiceLabel, voiceKind }: {
+  title: string; onPress: () => void; secondary?: boolean; icon?: any; style?: ViewStyle; disabled?: boolean; voiceLabel?: string; voiceKind?: 'action' | 'select' | 'submit';
 }) {
+  const { language } = useLanguage();
+  useVoiceAction({ label: voiceLabel ?? title, aliases: voiceLabel ? [translateText(voiceLabel, language)] : [translateText(title, language)], kind: voiceKind ?? inferCommandKind(title), run: onPress, disabled });
   return (
-    <Pressable onPress={onPress} style={[styles.button, secondary && styles.buttonSecondary, style]}>
+    <Pressable accessibilityRole="button" accessibilityState={{ disabled }} disabled={disabled} onPress={onPress}
+      style={({ pressed }) => [styles.button, secondary && styles.buttonSecondary, style, pressed && { opacity: 0.82, transform: [{ scale: 0.985 }] }, disabled && { opacity: 0.5 }]}>
       {icon ? <Icon name={icon} size={17} color={secondary ? C.green : C.white} /> : null}
       <Text style={[styles.buttonText, secondary && styles.buttonTextSecondary]}>{title}</Text>
     </Pressable>
@@ -64,9 +69,9 @@ export function Bullet({ text, icon = 'check-circle', color = C.green }: { text:
 export function Divider() { return <View style={{ height: 1, backgroundColor: C.border, marginVertical: 14 }} />; }
 
 const styles = StyleSheet.create({
-  button: { minHeight: 48, backgroundColor: C.green, borderRadius: 14, paddingHorizontal: 17, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8 },
+  button: { minHeight: 48, backgroundColor: C.green, borderRadius: 14, paddingHorizontal: 17, paddingVertical: 11, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8 },
   buttonSecondary: { backgroundColor: C.greenSoft, borderWidth: 1, borderColor: '#cfe2d1' },
-  buttonText: { color: C.white, fontSize: 14, fontWeight: '800' },
+  buttonText: { color: C.white, fontSize: 14, lineHeight: 20, fontWeight: '700', flexShrink: 1, textAlign: 'center' },
   buttonTextSecondary: { color: C.greenDark },
   tag: { borderRadius: 20, paddingHorizontal: 9, paddingVertical: 5, alignSelf: 'flex-start' },
 });

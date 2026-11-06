@@ -8,10 +8,12 @@ export async function POST(request: Request) {
   if (!apiKey) return error(500, 'Voice input is not configured yet.');
 
   let audio: File | null = null;
+  let language: unknown;
   try {
     // React Native's global FormData type has no get(); the server runtime's does.
     const form = (await request.formData()) as unknown as { get(name: string): unknown };
     const value = form.get('audio');
+    language = form.get('language');
     audio = value instanceof File ? value : null;
   } catch {}
   if (!audio || audio.size === 0) return error(400, 'No recording was sent.');
@@ -25,7 +27,7 @@ export async function POST(request: Request) {
   // Hindi as romanised text labelled English, which made the assistant reply in English.
   form.append('model', 'saaras:v3');
   form.append('mode', 'transcribe');
-  form.append('language_code', 'unknown'); // let Sarvam detect the language
+  form.append('language_code', isLanguageCode(language) ? language : 'unknown');
 
   let upstream: Response;
   try {
@@ -49,7 +51,7 @@ export async function POST(request: Request) {
   const transcript = typeof data?.transcript === 'string' ? data.transcript.trim() : '';
   if (!transcript) return error(422, 'We could not hear any words. Please speak closer to the phone and try again.');
 
-  return Response.json({ transcript, language: isLanguageCode(data.language_code) ? data.language_code : null });
+  return Response.json({ transcript, language: isLanguageCode(language) ? language : isLanguageCode(data.language_code) ? data.language_code : null });
 }
 
 function error(status: number, message: string) {

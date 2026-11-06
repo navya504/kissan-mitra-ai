@@ -1,3 +1,4 @@
+import { VoiceAction } from '../voice-command-context';
 import Constants from 'expo-constants';
 import { useState } from 'react';
 import { Linking, Platform, Pressable, StyleSheet, View } from 'react-native';
@@ -22,7 +23,7 @@ export function FarmLocationPicker({ state, initialLatitude, initialLongitude, a
       {areaAcres(area) > 0 ? <Polygon coordinates={boundaryPoints(selected, area)} strokeColor="#155936" strokeWidth={3} fillColor="#5bb36c38" /> : null}
       <Marker coordinate={selected} draggable title="Your farm pin" onDragEnd={event => setSelected(event.nativeEvent.coordinate)} />
     </MapView>
-    <View style={styles.coordinates}><Icon name="crosshairs-gps" size={16} color={C.green} /><Text style={styles.coordinateText}>{selected.latitude.toFixed(6)}, {selected.longitude.toFixed(6)}</Text><View style={{ flex: 1 }} /><Pressable onPress={() => onSelect(selected)} style={styles.useButton}><Text style={styles.useButtonText}>Use this pin</Text></Pressable></View>
+    <View style={styles.coordinates}><Icon name="crosshairs-gps" size={16} color={C.green} /><Text style={styles.coordinateText}>{selected.latitude.toFixed(6)}, {selected.longitude.toFixed(6)}</Text><View style={{ flex: 1 }} /><VoiceAction label="Use this pin" kind="submit" preview={`${selected.latitude.toFixed(6)}, ${selected.longitude.toFixed(6)}`} onPress={() => onSelect(selected)} style={styles.useButton}><Text style={styles.useButtonText}>Use this pin</Text></VoiceAction></View>
   </View>;
   const location = `${center.latitude},${center.longitude}`;
   return <View style={{ gap: 8 }}>

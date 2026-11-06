@@ -1,5 +1,5 @@
 import type { FarmProfileData } from './farm-profile';
-import { dictatedValue } from './speech-text';
+import { numericSpeechText } from './speech-text';
 
 export const registrationFields = ['name', 'state', 'district', 'village', 'crop', 'area'] as const;
 export type RegistrationField = typeof registrationFields[number];
@@ -36,8 +36,7 @@ export function registrationValue(field: RegistrationField, transcript: string, 
     return match ? { value: match } : { error: 'That state was not recognized. Say its full name or choose it in the State picker below.' };
   }
   if (field === 'area') {
-    value = dictatedValue(value).toLowerCase()
-      .replace(/\b(one|two|three|four|five|six|seven|eight|nine|ten)\b/g, word => String(['one','two','three','four','five','six','seven','eight','nine','ten'].indexOf(word) + 1))
+    value = numericSpeechText(value).toLowerCase()
       .replace(/ఎకరాలు|ఎకరం|एकड़|एकर|ஏக்கர்|ಎಕರೆ/g, 'acres')
       .replace(/హెక్టార్లు|హెక్టారు|हेक्टेयर|हेक्टर|ஹெக்டேர்|ಹೆಕ್ಟೇರ್/g, 'hectares');
     const match = value.trim().match(/^(\d+(?:\.\d+)?)\s*(acres?|hectares?|ha)?$/);
